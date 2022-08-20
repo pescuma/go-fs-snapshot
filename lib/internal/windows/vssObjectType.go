@@ -1,11 +1,12 @@
 //go:build windows
 
-package fs_snapshot_windows
+package internal_fs_snapshot_windows
 
-// vssObjectType is a custom type for the windows api vssObjectType type.
+// vssObjectType is a custom type for the Windows api VSSObjectType type.
 type vssObjectType uint
 
 // vssObjectType constant values necessary for using VSS api.
+//
 //goland:noinspection ALL
 const (
 	VSS_OBJECT_UNKNOWN vssObjectType = iota

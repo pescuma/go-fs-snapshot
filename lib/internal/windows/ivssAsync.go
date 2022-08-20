@@ -1,35 +1,37 @@
 //go:build windows
 
-package fs_snapshot_windows
+package internal_fs_snapshot_windows
 
 import (
-	"fmt"
+	"time"
 	"unsafe"
 
 	"github.com/go-ole/go-ole"
+	"github.com/pkg/errors"
 )
 
-// asyncCallFunc is the callback type for callAsyncFunctionAndWait.
+// asyncCallFunc is the callback type for callAndWait.
 type asyncCallFunc func() (*ivssAsync, error)
 
-// callAsyncFunctionAndWait calls an async functions and waits for it to either
+// callAndWait calls an async functions and waits for it to either
 // finish or timeout.
-func callAsyncFunctionAndWait(name string, function asyncCallFunc, timeoutInMillis uint32) error {
+func callAndWait(function asyncCallFunc, timeout time.Duration) error {
+	if timeout <= 0 {
+		return errors.New("Timeout occured")
+	}
+
 	async, err := function()
 	if err != nil {
 		return err
 	}
 
-	if async == nil {
-		return newVssTextError(fmt.Sprintf("%s() returned nil", name))
-	}
-
-	err = async.WaitUntilAsyncFinished(timeoutInMillis)
+	err = async.WaitUntilAsyncFinished(uint32(timeout.Milliseconds()))
 	async.Release()
 	return err
 }
 
 // uiid_ivssAsync defines to GUID of ivssAsync.
+//
 //goland:noinspection GoSnakeCaseUsage
 var uiid_ivssAsync = ole.NewGUID("{507C37B4-CF5B-4e95-B0AF-14EB9767467E}")
 
@@ -47,6 +49,7 @@ type ivssAsyncVTable struct {
 }
 
 // Constants for IVSSAsync api.
+//
 //goland:noinspection GoSnakeCaseUsage
 const (
 	VSS_S_ASYNC_PENDING   = 0x00042309
@@ -95,19 +98,16 @@ func (vssAsync *ivssAsync) WaitUntilAsyncFinished(millis uint32) error {
 	}
 
 	if state == VSS_S_ASYNC_CANCELLED {
-		return newVssTextError("async operation cancelled")
+		return errors.New("async operation cancelled")
 	}
 
 	if state == VSS_S_ASYNC_PENDING {
 		_ = vssAsync.Cancel()
-		return newVssTextError("async operation pending")
+		return errors.New("async operation pending")
 	}
 
 	if state != VSS_S_ASYNC_FINISHED {
-		err = newVssErrorIfResultNotOK("async operation failed", HRESULT(state))
-		if err != nil {
-			return err
-		}
+		return errors.Errorf("async operation failed with state 0x%x", state)
 	}
 
 	return nil

@@ -1,9 +1,8 @@
 //go:build windows
 
-package fs_snapshot_windows
+package internal_fs_snapshot_windows
 
 import (
-	"fmt"
 	"syscall"
 	"unsafe"
 
@@ -14,9 +13,11 @@ import (
 type HRESULT uint
 
 // HRESULT constant values necessary for using VSS api.
+//
 //goland:noinspection GoSnakeCaseUsage,SpellCheckingInspection
 const (
 	S_OK                                            HRESULT = 0x00000000
+	S_FALSE                                         HRESULT = 0x00000001
 	E_ACCESSDENIED                                  HRESULT = 0x80070005
 	E_OUTOFMEMORY                                   HRESULT = 0x8007000E
 	E_INVALIDARG                                    HRESULT = 0x80070057
@@ -84,6 +85,7 @@ const (
 )
 
 // hresultToString maps a HRESULT value to a human-readable string.
+//
 //goland:noinspection SpellCheckingInspection
 var hresultToString = map[HRESULT]string{
 	S_OK:                                            "S_OK",
@@ -172,7 +174,8 @@ func apiBoolToInt(input bool) uint {
 	}
 }
 
-func apiIntToBool(input uint) bool {
+// apiBoolToInt converts an int from calling the VSS api to a bool
+func apiIntToBool(input uint32) bool {
 	switch input {
 	case 0:
 		return false
@@ -198,7 +201,19 @@ func syscallN(name string, trap uintptr, args ...uintptr) error {
 
 	hresult := HRESULT(result)
 	if hresult != S_OK {
-		return newVssError(fmt.Sprintf("%s() failed", name), HRESULT(result))
+		return newVssErrorF(HRESULT(result), "%s failed", name)
+	}
+
+	return nil
+}
+
+// syscallNF is a wapper for syscall.SyscallN that creates a nice error as return
+func syscallNF(name string, trap uintptr, args ...uintptr) error {
+	result, _, _ := syscall.SyscallN(trap, args...)
+
+	hresult := HRESULT(result)
+	if hresult != S_OK && hresult != S_FALSE {
+		return newVssErrorF(HRESULT(result), "%s failed", name)
 	}
 
 	return nil

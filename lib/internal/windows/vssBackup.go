@@ -1,11 +1,11 @@
 //go:build windows
 
-package fs_snapshot_windows
+package internal_fs_snapshot_windows
 
-// vssBackup is a custom type for the windows api vssBackup type.
+// vssBackup is a custom type for the Windows API VSSBackup type.
 type vssBackup uint
 
-// vssBackup constant values necessary for using VSS api.
+// VSSBackup constant values necessary for using VSS api.
 //goland:noinspection GoSnakeCaseUsage,GoUnusedConst
 const (
 	VSS_BT_UNDEFINED vssBackup = iota
