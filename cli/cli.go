@@ -14,13 +14,18 @@ func Execute() {
 	var cmds commands
 	ctx := kong.Parse(&cmds, kong.ShortUsageOnError())
 
-	s, err := fs_snapshot.CreateSnapshoter()
-	defer s.Close()
+	var s fs_snapshot.Snapshoter
+	var err error
 
-	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-		return
+	if ctx.Path[1].Command.Name != "enable" {
+		s, err = fs_snapshot.CreateSnapshoter()
+		defer s.Close()
+
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+			return
+		}
 	}
 
 	err = ctx.Run(&context{
@@ -53,6 +58,14 @@ type commands struct {
 		Info   setInfoCmd   `cmd:"" help:"Show information of a snapshot set."`
 		Delete setDeleteCmd `cmd:"" help:"Delete a snapshot set."`
 	} `cmd:"" help:"Commands related to snapshot sets."`
+
+	Enable struct {
+		For struct {
+			CurrentUser enableForCurrentUserCmd `cmd:""`
+			User        enableForUserCmd        `cmd:""`
+		} `cmd:""`
+		Test enableTestCurrentUserCmd `cmd:"" help:"Test if the current user can create snapshots."`
+	} `cmd:"" help:"Enable users to do snapshots."`
 }
 
 type globals struct {
