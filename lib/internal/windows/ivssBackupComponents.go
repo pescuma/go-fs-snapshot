@@ -34,22 +34,22 @@ func CreateIVSSBackupComponents() (*IVSSBackupComponents, error) {
 		if oleIUnknown != nil {
 			oleIUnknown.Release()
 		}
-		return nil, newVssError(hresult, "The caller does not have sufficient backup privileges or is not an administrator")
+		return nil, newVssError(hresult, "the caller does not have sufficient backup privileges or is not an administrator")
 	default:
 		if oleIUnknown != nil {
 			oleIUnknown.Release()
 		}
-		return nil, newVssError(hresult, "Failed to create VSS instance")
+		return nil, newVssError(hresult, "failed to create VSS instance")
 	}
 
 	if oleIUnknown == nil {
-		return nil, errors.New("Failed to create VSS instance: received nil")
+		return nil, errors.New("failed to create VSS instance: received nil")
 	}
 
 	comInterface, err := queryInterface(oleIUnknown, uuid_ivssBackupComponents)
 	if err != nil {
 		oleIUnknown.Release()
-		return nil, errors.Errorf("Failed to create VSS instance: %v", err)
+		return nil, errors.Errorf("failed to create VSS instance: %v", err)
 	}
 
 	bc := &IVSSBackupComponents{}

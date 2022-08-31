@@ -34,7 +34,7 @@ func (c *backupCmd) Run(ctx *context) error {
 		ProviderID:   c.ProviderID,
 		Timeout:      c.Timeout,
 		Simple:       c.Simple,
-		InfoCallback: c.outputMessages(ctx),
+		InfoCallback: outputMessages(ctx),
 	})
 	defer backuper.Close()
 	if err != nil {
@@ -79,25 +79,6 @@ func (c *backupCmd) Run(ctx *context) error {
 		_, _ = fmt.Scanln(&response)
 
 		return nil
-	}
-}
-
-func (c *backupCmd) outputMessages(ctx *context) func(level fs_snapshot.MessageLevel, msg string) {
-	return func(level fs_snapshot.MessageLevel, msg string) {
-		switch level {
-		case fs_snapshot.InfoLevel:
-			if ctx.globals.Verbose >= 1 {
-				fmt.Println(msg)
-			}
-		case fs_snapshot.DetailsLevel:
-			if ctx.globals.Verbose >= 2 {
-				fmt.Println("[DETAILS] " + msg)
-			}
-		case fs_snapshot.TraceLevel:
-			if ctx.globals.Verbose >= 3 {
-				fmt.Println("[TRACE] " + msg)
-			}
-		}
 	}
 }
 

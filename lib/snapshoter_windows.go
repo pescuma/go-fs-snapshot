@@ -24,13 +24,17 @@ func CreateSnapshoter() (Snapshoter, error) {
 	is64Bit, err := internal_fs_snapshot_windows.IsRunningOn64BitWindows()
 	if err != nil {
 		return createNullSnapshoter(),
-			errors.Wrapf(err, "Failed to detect windows architecture: %s", err.Error())
+			errors.Wrapf(err, "failed to detect windows architecture: %s", err.Error())
 	}
 
 	if (is64Bit && runtime.GOARCH != "amd64") || (!is64Bit && runtime.GOARCH != "386") {
 		return createNullSnapshoter(),
 			errors.Errorf("executables compiled for %v can't use VSS on other architectures. "+
 				"Please use an executable compiled for your platform.", runtime.GOARCH)
+	}
+
+	if err := InitializePrivileges(); err != nil {
+		return createNullSnapshoter(), errors.New("the caller does not have sufficient backup privileges or is not an administrator")
 	}
 
 	err = internal_fs_snapshot_windows.InitializeCOM()

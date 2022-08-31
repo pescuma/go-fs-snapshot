@@ -77,7 +77,8 @@ type InfoMessageCallback func(level MessageLevel, msg string)
 type MessageLevel int
 
 const (
-	InfoLevel = iota
+	OutputLevel = iota
+	InfoLevel
 	DetailsLevel
 	TraceLevel
 )

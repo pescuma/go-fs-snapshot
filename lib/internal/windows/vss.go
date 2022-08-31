@@ -38,6 +38,25 @@ func InitializeCOM() error {
 		}
 	}
 
+	// https://docs.microsoft.com/en-us/windows/win32/vss/security-considerations-for-requestors
+	modole32 := windows.NewLazySystemDLL("ole32.dll")
+	procCoInitializeSecurity := modole32.NewProc("CoInitializeSecurity")
+	hri, _, _ := procCoInitializeSecurity.Call(
+		uintptr(0),          //  PSECURITY_DESCRIPTOR
+		uintptr(0xFFFFFFFF), //  LONG
+		uintptr(0),          //  SOLE_AUTHENTICATION_SERVICE
+		uintptr(0),          //  void
+		uintptr(6),          //  RPC_C_AUTHN_LEVEL_PKT_INTEGRITY DWORD
+		uintptr(3),          //  RPC_C_IMP_LEVEL_IMPERSONATE DWORD
+		uintptr(0),          //  void
+		uintptr(0x20),       //  EOAC_STATIC DWORD
+		uintptr(0),          //  void
+	)
+	hr := HRESULT(hri)
+	if hr != S_OK {
+		return errors.Errorf("Failed to initialize COM security (%v)", hr)
+	}
+
 	return nil
 }
 
