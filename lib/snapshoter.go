@@ -29,7 +29,7 @@ type Snapshoter interface {
 	DeleteSnapshot(id string, force bool) (bool, error)
 
 	// StartBackup creates a Backuper to allow easy backup creation.
-	StartBackup(opts *CreateSnapshotOptions) (Backuper, error)
+	StartBackup(opts *SnapshotOptions) (Backuper, error)
 
 	// Close frees all resources.
 	Close()
@@ -60,7 +60,7 @@ type Snapshot struct {
 	Attributes   string
 }
 
-type CreateSnapshotOptions struct {
+type SnapshotOptions struct {
 	ProviderID string
 
 	Timeout time.Duration

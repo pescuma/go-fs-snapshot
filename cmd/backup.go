@@ -30,7 +30,7 @@ func (c *backupCmd) Run(ctx *context) error {
 		return err
 	}
 
-	backuper, err := ctx.snapshoter.StartBackup(&fs_snapshot.CreateSnapshotOptions{
+	backuper, err := ctx.snapshoter.StartBackup(&fs_snapshot.SnapshotOptions{
 		ProviderID:   c.ProviderID,
 		Timeout:      c.Timeout,
 		Simple:       c.Simple,

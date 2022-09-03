@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func CreateIVSSBackupComponents() (*IVSSBackupComponents, error) {
+func NewIVSSBackupComponents() (*IVSSBackupComponents, error) {
 	var createInstanceName string
 	if runtime.GOARCH == "386" {
 		createInstanceName = "?CreateVssBackupComponents@@YGJPAPAVIVssBackupComponents@@@Z"

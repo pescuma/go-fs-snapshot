@@ -18,9 +18,9 @@ import (
 
 const simpleIdLength = 7
 
-// CreateSnapshoter creates a new snapshoter.
+// NewSnapshoter creates a new snapshoter.
 // In case of error a null snapshoter is returned, so you can use it without problem.
-func CreateSnapshoter() (Snapshoter, error) {
+func NewSnapshoter() (Snapshoter, error) {
 	is64Bit, err := internal_fs_snapshot_windows.IsRunningOn64BitWindows()
 	if err != nil {
 		return createNullSnapshoter(),
@@ -42,7 +42,7 @@ func CreateSnapshoter() (Snapshoter, error) {
 		return createNullSnapshoter(), err
 	}
 
-	bc, err := internal_fs_snapshot_windows.CreateIVSSBackupComponents()
+	bc, err := internal_fs_snapshot_windows.NewIVSSBackupComponents()
 	bc.Close()
 	if err != nil {
 		return createNullSnapshoter(), err
@@ -62,7 +62,7 @@ func (s *windowsSnapshoter) SimplifyId(id string) string {
 func (s *windowsSnapshoter) ListProviders(filterID string) ([]*Provider, error) {
 	var result []*Provider
 
-	bc, err := s.CreateBackupComponentsForManagement()
+	bc, err := s.NewBackupComponentsForManagement()
 	defer bc.Close()
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func (s *windowsSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) 
 }
 
 func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filterSetID string) ([]*Snapshot, []*SnapshotSet, error) {
-	bc, err := s.CreateBackupComponentsForManagement()
+	bc, err := s.NewBackupComponentsForManagement()
 	defer bc.Close()
 	if err != nil {
 		return nil, nil, err
@@ -266,7 +266,7 @@ func (s *windowsSnapshoter) DeleteSet(id string, force bool) (bool, error) {
 		return false, err
 	}
 
-	bc, err := s.CreateBackupComponentsForManagement()
+	bc, err := s.NewBackupComponentsForManagement()
 	defer bc.Close()
 	if err != nil {
 		return false, err
@@ -290,7 +290,7 @@ func (s *windowsSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) 
 		return false, err
 	}
 
-	bc, err := s.CreateBackupComponentsForManagement()
+	bc, err := s.NewBackupComponentsForManagement()
 	defer bc.Close()
 	if err != nil {
 		return false, err
@@ -308,8 +308,8 @@ func (s *windowsSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) 
 	return true, nil
 }
 
-func (s *windowsSnapshoter) CreateBackupComponentsForManagement() (*internal_fs_snapshot_windows.IVSSBackupComponents, error) {
-	bc, err := internal_fs_snapshot_windows.CreateIVSSBackupComponents()
+func (s *windowsSnapshoter) NewBackupComponentsForManagement() (*internal_fs_snapshot_windows.IVSSBackupComponents, error) {
+	bc, err := internal_fs_snapshot_windows.NewIVSSBackupComponents()
 	if err != nil {
 		return bc, err
 	}
@@ -327,9 +327,9 @@ func (s *windowsSnapshoter) CreateBackupComponentsForManagement() (*internal_fs_
 	return bc, nil
 }
 
-func (s *windowsSnapshoter) StartBackup(opts *CreateSnapshotOptions) (Backuper, error) {
+func (s *windowsSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error) {
 	if opts == nil {
-		opts = &CreateSnapshotOptions{}
+		opts = &SnapshotOptions{}
 	}
 
 	providerID, err := s.getProviderID(opts.ProviderID)
@@ -338,7 +338,7 @@ func (s *windowsSnapshoter) StartBackup(opts *CreateSnapshotOptions) (Backuper, 
 	}
 
 	return &windowsBackuper{
-		opts: &internal_fs_snapshot_windows.CreateSnapshotOptions{
+		opts: &internal_fs_snapshot_windows.SnapshotOptions{
 			ProviderID: providerID,
 			Timeout:    opts.Timeout,
 			Writters:   !opts.Simple,

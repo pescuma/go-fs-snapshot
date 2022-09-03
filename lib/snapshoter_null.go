@@ -31,7 +31,7 @@ func (s *nullSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
 	return false, nil
 }
 
-func (s *nullSnapshoter) StartBackup(opts *CreateSnapshotOptions) (Backuper, error) {
+func (s *nullSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error) {
 	return &nullBackuper{}, nil
 }
 

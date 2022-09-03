@@ -18,7 +18,7 @@ func Execute() {
 	var err error
 
 	if ctx.Path[1].Command.Name != "enable" {
-		s, err = fs_snapshot.CreateSnapshoter()
+		s, err = fs_snapshot.NewSnapshoter()
 		defer s.Close()
 
 		if err != nil {

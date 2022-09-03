@@ -10,10 +10,10 @@ import (
 )
 
 type windowsBackuper struct {
-	opts         *internal_fs_snapshot_windows.CreateSnapshotOptions
+	opts         *internal_fs_snapshot_windows.SnapshotOptions
 	mutex        sync.RWMutex
 	volumes      map[string]*volumeInfo // The keys are all lower case
-	vssResults   []*internal_fs_snapshot_windows.CreateSnapshotsResult
+	vssResults   []*internal_fs_snapshot_windows.SnapshotsResult
 	infoCallback InfoMessageCallback
 }
 

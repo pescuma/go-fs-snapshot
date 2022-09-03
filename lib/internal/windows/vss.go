@@ -60,8 +60,8 @@ func InitializeCOM() error {
 	return nil
 }
 
-// CreateSnapshotOptions needed to be duplicated here to avoid cyclical dependencies
-type CreateSnapshotOptions struct {
+// SnapshotOptions needed to be duplicated here to avoid cyclical dependencies
+type SnapshotOptions struct {
 	ProviderID   *ole.GUID
 	Timeout      time.Duration
 	Writters     bool
@@ -80,7 +80,7 @@ const (
 
 // CreateSnapshots creates snapshots for the volumes especified.
 // Even on fail a result is returned and must be closed.
-func CreateSnapshots(volumes []string, opts *CreateSnapshotOptions) (*CreateSnapshotsResult, error) {
+func CreateSnapshots(volumes []string, opts *SnapshotOptions) (*SnapshotsResult, error) {
 	if opts.ProviderID == nil {
 		opts.ProviderID = ole.IID_NULL
 	}
@@ -93,14 +93,14 @@ func CreateSnapshots(volumes []string, opts *CreateSnapshotOptions) (*CreateSnap
 
 	var err error
 
-	r := CreateSnapshotsResult{
+	r := SnapshotsResult{
 		opts:    opts,
 		volumes: make(map[string]*volumeSnapshotInfo),
 	}
 	start := time.Now()
 
-	opts.InfoCallback(TraceLevel, "CreateIVSSBackupComponents()")
-	r.bc, err = CreateIVSSBackupComponents()
+	opts.InfoCallback(TraceLevel, "NewIVSSBackupComponents()")
+	r.bc, err = NewIVSSBackupComponents()
 	if err != nil {
 		return &r, err
 	}
@@ -252,8 +252,8 @@ func CreateSnapshots(volumes []string, opts *CreateSnapshotOptions) (*CreateSnap
 	return &r, nil
 }
 
-type CreateSnapshotsResult struct {
-	opts                   *CreateSnapshotOptions
+type SnapshotsResult struct {
+	opts                   *SnapshotOptions
 	bc                     *IVSSBackupComponents
 	setID                  *ole.GUID
 	volumes                map[string]*volumeSnapshotInfo
@@ -265,7 +265,7 @@ type volumeSnapshotInfo struct {
 	properties *VssSnapshotProperties
 }
 
-func (r *CreateSnapshotsResult) GetSnapshotPath(volume string) string {
+func (r *SnapshotsResult) GetSnapshotPath(volume string) string {
 	info := r.volumes[volume]
 
 	if info.properties == nil {
@@ -275,7 +275,7 @@ func (r *CreateSnapshotsResult) GetSnapshotPath(volume string) string {
 	return info.properties.GetSnapshotDeviceObject()
 }
 
-func (r *CreateSnapshotsResult) Close() {
+func (r *SnapshotsResult) Close() {
 	for _, volume := range r.volumes {
 		if volume.properties != nil {
 			r.opts.InfoCallback(TraceLevel, fmt.Sprintf("VssFreeSnapshotProperties(%v)", volume.id))
