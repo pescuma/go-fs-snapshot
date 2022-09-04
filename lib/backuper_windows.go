@@ -197,6 +197,23 @@ func (b *windowsBackuper) markSuccess(volume, snapshotPath string) {
 	}
 }
 
+func (b *windowsBackuper) ListSnapshotedDirectories() map[string]string {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
+	result := make(map[string]string)
+
+	for _, v := range b.volumes {
+		if v.state != StateSuccess {
+			continue
+		}
+
+		result[v.volume] = v.snapshotPath
+	}
+
+	return result
+}
+
 func (b *windowsBackuper) Close() {
 	for _, r := range b.vssResults {
 		r.Close()

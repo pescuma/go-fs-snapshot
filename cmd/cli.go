@@ -66,6 +66,10 @@ type commands struct {
 		} `cmd:""`
 		Test enableTestCurrentUserCmd `cmd:"" help:"Test if the current user can create snapshots."`
 	} `cmd:"" help:"Enable users to create snapshots."`
+
+	Server struct {
+		Start serverStartCmd `cmd:"" help:"Start a server and wait for commands."`
+	} `cmd:"" help:"Commands rrelated to a fs_snapshot server."`
 }
 
 type globals struct {

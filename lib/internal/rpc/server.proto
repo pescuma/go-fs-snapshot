@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+option go_package = "github.com/pescuma/go-fs-snapshot/internal/rpc";
+
+package rpc;
+
+service FsSnapshot {
+  rpc ListProviders(ListProvidersRequest) returns (ListProvidersReply) {}
+  rpc ListSets(ListSetsRequest) returns (ListSetsReply) {}
+  rpc ListSnapshots(ListSnapshotsRequest) returns (ListSnapshotsReply) {}
+  rpc StartBackup (StartBackupRequest) returns (stream StartBackupReply) {}
+  rpc TryToCreateTemporarySnapshot(TryToCreateTemporarySnapshotRequest) returns (stream TryToCreateTemporarySnapshotReply) {}
+  rpc CloseBackup (CloseBackupRequest) returns (stream CloseBackupReply) {}
+}
+
+message ListProvidersRequest {
+  string filterId = 1;
+}
+message ListProvidersReply {
+  repeated Provider providers = 1;
+}
+
+message ListSetsRequest {
+  string filterId = 1;
+}
+message ListSetsReply {
+  repeated SnapshotSet sets = 1;
+}
+
+message ListSnapshotsRequest {
+  string filterId = 1;
+}
+message ListSnapshotsReply {
+  repeated Snapshot snapshots = 1;
+}
+
+message StartBackupRequest {
+  string providerId = 1;
+  int32 timeout = 2;
+  bool simple = 3;
+}
+message StartBackupReply {
+  oneof MessageOrResult {
+    OutputMessage message = 1;
+    StartBackupResult result = 2;
+  }
+}
+message StartBackupResult {
+  uint32 backuperId = 1;
+}
+
+message TryToCreateTemporarySnapshotRequest {
+  uint32 backuperId = 1;
+  repeated string dirs = 2;
+}
+message TryToCreateTemporarySnapshotReply {
+  oneof MessageOrResult {
+    OutputMessage message = 1;
+    TryToCreateTemporarySnapshotResult result = 2;
+  }
+}
+message TryToCreateTemporarySnapshotResult {
+  map<string, string> dirs = 1;
+}
+
+message CloseBackupRequest {
+  uint32 backuperId = 1;
+}
+message CloseBackupReply {
+  OutputMessage message = 1;
+}
+
+message Provider {
+  string id = 1;
+  string name = 2;
+  string version = 3;
+  string type = 4;
+}
+
+message SnapshotSet {
+  string id = 1;
+  int64 creationTime = 2;
+  int32 snapshotCountOnCreation = 3;
+  repeated Snapshot snapshots = 4;
+}
+
+message Snapshot {
+  string id = 1;
+  string originalPath = 2;
+  string snapshotPath = 3;
+  int64 creationTime = 4;
+  SnapshotSet set = 5;
+  Provider provider = 6;
+  string state = 7;
+  string attributes = 8;
+}
+
+message OutputMessage {
+  MessageLevel level = 1;
+  string message = 2;
+}
+enum MessageLevel {
+  OutputLevel = 0;
+  InfoLevel = 1;
+  DetailsLevel = 2;
+  TraceLevel = 3;
+}
+
+

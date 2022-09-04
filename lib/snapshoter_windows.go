@@ -18,34 +18,31 @@ import (
 
 const simpleIdLength = 7
 
-// NewSnapshoter creates a new snapshoter.
-// In case of error a null snapshoter is returned, so you can use it without problem.
-func NewSnapshoter() (Snapshoter, error) {
+func newOSSnapshoter() (Snapshoter, error) {
+	err := InitializePrivileges()
+	if err != nil {
+		return nil, errors.New("the caller does not have sufficient backup privileges or is not an administrator")
+	}
+
 	is64Bit, err := internal_fs_snapshot_windows.IsRunningOn64BitWindows()
 	if err != nil {
-		return createNullSnapshoter(),
-			errors.Wrapf(err, "failed to detect windows architecture: %s", err.Error())
+		return nil, errors.Wrapf(err, "failed to detect windows architecture: %s", err.Error())
 	}
 
 	if (is64Bit && runtime.GOARCH != "amd64") || (!is64Bit && runtime.GOARCH != "386") {
-		return createNullSnapshoter(),
-			errors.Errorf("executables compiled for %v can't use VSS on other architectures. "+
-				"Please use an executable compiled for your platform.", runtime.GOARCH)
-	}
-
-	if err := InitializePrivileges(); err != nil {
-		return createNullSnapshoter(), errors.New("the caller does not have sufficient backup privileges or is not an administrator")
+		return nil, errors.Errorf("executables compiled for %v can't use VSS on other architectures. "+
+			"Please use an executable compiled for your platform.", runtime.GOARCH)
 	}
 
 	err = internal_fs_snapshot_windows.InitializeCOM()
 	if err != nil {
-		return createNullSnapshoter(), err
+		return nil, err
 	}
 
 	bc, err := internal_fs_snapshot_windows.NewIVSSBackupComponents()
 	bc.Close()
 	if err != nil {
-		return createNullSnapshoter(), err
+		return nil, err
 	}
 
 	return &windowsSnapshoter{}, nil

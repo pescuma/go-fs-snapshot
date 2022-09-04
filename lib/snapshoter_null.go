@@ -1,6 +1,6 @@
 package fs_snapshot
 
-func createNullSnapshoter() Snapshoter {
+func newNullSnapshoter() Snapshoter {
 	return &nullSnapshoter{}
 }
 

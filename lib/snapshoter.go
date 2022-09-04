@@ -82,3 +82,14 @@ const (
 	DetailsLevel
 	TraceLevel
 )
+
+// NewSnapshoter creates a new snapshoter.
+// In case of error a null snapshoter is returned, so you can use it without problem.
+func NewSnapshoter() (Snapshoter, error) {
+	result, err := newOSSnapshoter()
+	if err != nil {
+		return newNullSnapshoter(), err
+	}
+
+	return result, nil
+}
