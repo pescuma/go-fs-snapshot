@@ -19,7 +19,7 @@ import (
 const simpleIdLength = 7
 
 func newOSSnapshoter() (Snapshoter, error) {
-	err := InitializePrivileges()
+	err := initializePrivileges()
 	if err != nil {
 		return nil, errors.New("the caller does not have sufficient backup privileges or is not an administrator")
 	}
@@ -51,7 +51,7 @@ func newOSSnapshoter() (Snapshoter, error) {
 type windowsSnapshoter struct {
 }
 
-func (s *windowsSnapshoter) SimplifyId(id string) string {
+func (s *windowsSnapshoter) SimplifyID(id string) string {
 	id = strings.ReplaceAll(id, "-", "")
 	return id[:simpleIdLength]
 }
@@ -89,7 +89,7 @@ func (s *windowsSnapshoter) ListProviders(filterID string) ([]*Provider, error) 
 		id := toGuidString(props.provider.ProviderID)
 
 		add := true
-		if filterID != "" && filterID != id && filterID != s.SimplifyId(id) {
+		if filterID != "" && filterID != id && filterID != s.SimplifyID(id) {
 			add = false
 
 		}
@@ -173,9 +173,9 @@ func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filter
 		snapshotID := toGuidString(props.snapshot.SnapshotID)
 
 		add := true
-		if filterSetID != "" && filterSetID != setID && filterSetID != s.SimplifyId(setID) {
+		if filterSetID != "" && filterSetID != setID && filterSetID != s.SimplifyID(setID) {
 			add = false
-		} else if filterSnapshotID != "" && filterSnapshotID != snapshotID && filterSnapshotID != s.SimplifyId(snapshotID) {
+		} else if filterSnapshotID != "" && filterSnapshotID != snapshotID && filterSnapshotID != s.SimplifyID(snapshotID) {
 			add = false
 		}
 

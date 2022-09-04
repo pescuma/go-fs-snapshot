@@ -1,7 +1,7 @@
 package fs_snapshot
 
 import (
-	context "context"
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -108,6 +108,36 @@ func (s *server) ListSnapshots(ctx context.Context, request *rpc.ListSnapshotsRe
 	}
 
 	return &reply, nil
+}
+
+func (s *server) SimplifyId(ctx context.Context, request *rpc.SimplifyIdRequest) (*rpc.SimplifyIdReply, error) {
+	simpleId := s.snapshoter.SimplifyID(request.Id)
+
+	return &rpc.SimplifyIdReply{
+		SimpleId: simpleId,
+	}, nil
+}
+
+func (s *server) DeleteSet(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
+	deleted, err := s.snapshoter.DeleteSet(request.Id, request.Force)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rpc.DeleteReply{
+		Deleted: deleted,
+	}, nil
+}
+
+func (s *server) DeleteSnapshot(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
+	deleted, err := s.snapshoter.DeleteSnapshot(request.Id, request.Force)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rpc.DeleteReply{
+		Deleted: deleted,
+	}, nil
 }
 
 func (s *server) StartBackup(request *rpc.StartBackupRequest, backupServer rpc.FsSnapshot_StartBackupServer) error {

@@ -91,19 +91,40 @@ func (s *clientSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 	return result, nil
 }
 
-func (s *clientSnapshoter) SimplifyId(id string) string {
-	//TODO implement me
-	panic("implement me")
+func (s *clientSnapshoter) SimplifyID(id string) string {
+	reply, err := s.client.SimplifyId(s.ctx, &rpc.SimplifyIdRequest{
+		Id: id,
+	})
+	if err != nil {
+		// Nothing else that can be done here
+		return id
+	}
+
+	return reply.SimpleId
 }
 
 func (s *clientSnapshoter) DeleteSet(id string, force bool) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+	reply, err := s.client.DeleteSet(s.ctx, &rpc.DeleteRequest{
+		Id:    id,
+		Force: force,
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return reply.Deleted, nil
 }
 
 func (s *clientSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+	reply, err := s.client.DeleteSnapshot(s.ctx, &rpc.DeleteRequest{
+		Id:    id,
+		Force: force,
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return reply.Deleted, nil
 }
 
 func (s *clientSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error) {

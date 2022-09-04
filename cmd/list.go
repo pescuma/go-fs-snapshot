@@ -53,8 +53,8 @@ func (c *listCmd) Run(ctx *context) error {
 	for _, p := range ps {
 		if ctx.globals.Verbose == 0 {
 			table.Body.Cells = append(table.Body.Cells, []*simpletable.Cell{
-				{Text: ctx.snapshoter.SimplifyId(p.ID)},
-				{Text: ctx.snapshoter.SimplifyId(p.Set.ID)},
+				{Text: ctx.snapshoter.SimplifyID(p.ID)},
+				{Text: ctx.snapshoter.SimplifyID(p.Set.ID)},
 				{Text: p.OriginalPath},
 				{Text: p.SnapshotPath},
 				{Text: p.CreationTime.Local().Format("2006-01-02 15:04")},

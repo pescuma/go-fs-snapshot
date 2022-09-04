@@ -8,6 +8,9 @@ service FsSnapshot {
   rpc ListProviders(ListProvidersRequest) returns (ListProvidersReply) {}
   rpc ListSets(ListSetsRequest) returns (ListSetsReply) {}
   rpc ListSnapshots(ListSnapshotsRequest) returns (ListSnapshotsReply) {}
+  rpc SimplifyId(SimplifyIdRequest) returns (SimplifyIdReply) {}
+  rpc DeleteSet(DeleteRequest) returns (DeleteReply) {}
+  rpc DeleteSnapshot(DeleteRequest) returns (DeleteReply) {}
   rpc StartBackup (StartBackupRequest) returns (stream StartBackupReply) {}
   rpc TryToCreateTemporarySnapshot(TryToCreateTemporarySnapshotRequest) returns (stream TryToCreateTemporarySnapshotReply) {}
   rpc CloseBackup (CloseBackupRequest) returns (stream CloseBackupReply) {}
@@ -32,6 +35,21 @@ message ListSnapshotsRequest {
 }
 message ListSnapshotsReply {
   repeated Snapshot snapshots = 1;
+}
+
+message SimplifyIdRequest {
+  string id = 1;
+}
+message SimplifyIdReply {
+  string simpleId = 1;
+}
+
+message DeleteRequest {
+  string id = 1;
+  bool force = 2;
+}
+message DeleteReply {
+  bool deleted = 1;
 }
 
 message StartBackupRequest {

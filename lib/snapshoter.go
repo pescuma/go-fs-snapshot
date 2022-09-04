@@ -16,7 +16,7 @@ type Snapshoter interface {
 	ListSnapshots(filterID string) ([]*Snapshot, error)
 
 	// SimplifyId simplifies the snapshot, set and provider IDs, if possible
-	SimplifyId(id string) string
+	SimplifyID(id string) string
 
 	// DeleteSet deletes one snapshot set and all its snapshots.
 	// Returns true if snapshot was found and deleted, false if it was not found and an

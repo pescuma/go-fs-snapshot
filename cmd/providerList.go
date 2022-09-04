@@ -18,7 +18,7 @@ func (c *providerListCmd) Run(ctx *context) error {
 	table := simpletable.New()
 	table.SetStyle(simpletable.StyleCompactLite)
 
-	simplifyId := ctx.snapshoter.SimplifyId
+	simplifyId := ctx.snapshoter.SimplifyID
 	if ctx.globals.Verbose > 0 {
 		simplifyId = func(id string) string {
 			return id

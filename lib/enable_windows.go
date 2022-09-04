@@ -139,7 +139,7 @@ func rightsAsSring(rights []gowin32.AccountRightName) string {
 	return sb.String()
 }
 
-func InitializePrivileges() error {
+func initializePrivileges() error {
 	token, err := wintoken.OpenProcessToken(0, wintoken.TokenPrimary)
 	if err != nil {
 		return errors.Wrap(err, "failed to get process token")

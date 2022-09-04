@@ -46,7 +46,7 @@ func (c *setListCmd) Run(ctx *context) error {
 	for _, p := range ps {
 		if ctx.globals.Verbose == 0 {
 			table.Body.Cells = append(table.Body.Cells, []*simpletable.Cell{
-				{Text: ctx.snapshoter.SimplifyId(p.ID)},
+				{Text: ctx.snapshoter.SimplifyID(p.ID)},
 				{Text: p.CreationTime.Local().Format("2006-01-02 15:04")},
 				{Text: fmt.Sprintf("%v", len(p.Snapshots)), Align: simpletable.AlignRight},
 			})

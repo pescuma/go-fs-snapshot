@@ -25,6 +25,9 @@ type FsSnapshotClient interface {
 	ListProviders(ctx context.Context, in *ListProvidersRequest, opts ...grpc.CallOption) (*ListProvidersReply, error)
 	ListSets(ctx context.Context, in *ListSetsRequest, opts ...grpc.CallOption) (*ListSetsReply, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ListSnapshotsReply, error)
+	SimplifyId(ctx context.Context, in *SimplifyIdRequest, opts ...grpc.CallOption) (*SimplifyIdReply, error)
+	DeleteSet(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteReply, error)
+	DeleteSnapshot(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteReply, error)
 	StartBackup(ctx context.Context, in *StartBackupRequest, opts ...grpc.CallOption) (FsSnapshot_StartBackupClient, error)
 	TryToCreateTemporarySnapshot(ctx context.Context, in *TryToCreateTemporarySnapshotRequest, opts ...grpc.CallOption) (FsSnapshot_TryToCreateTemporarySnapshotClient, error)
 	CloseBackup(ctx context.Context, in *CloseBackupRequest, opts ...grpc.CallOption) (FsSnapshot_CloseBackupClient, error)
@@ -59,6 +62,33 @@ func (c *fsSnapshotClient) ListSets(ctx context.Context, in *ListSetsRequest, op
 func (c *fsSnapshotClient) ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ListSnapshotsReply, error) {
 	out := new(ListSnapshotsReply)
 	err := c.cc.Invoke(ctx, "/rpc.FsSnapshot/ListSnapshots", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fsSnapshotClient) SimplifyId(ctx context.Context, in *SimplifyIdRequest, opts ...grpc.CallOption) (*SimplifyIdReply, error) {
+	out := new(SimplifyIdReply)
+	err := c.cc.Invoke(ctx, "/rpc.FsSnapshot/SimplifyId", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fsSnapshotClient) DeleteSet(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteReply, error) {
+	out := new(DeleteReply)
+	err := c.cc.Invoke(ctx, "/rpc.FsSnapshot/DeleteSet", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fsSnapshotClient) DeleteSnapshot(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteReply, error) {
+	out := new(DeleteReply)
+	err := c.cc.Invoke(ctx, "/rpc.FsSnapshot/DeleteSnapshot", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -168,6 +198,9 @@ type FsSnapshotServer interface {
 	ListProviders(context.Context, *ListProvidersRequest) (*ListProvidersReply, error)
 	ListSets(context.Context, *ListSetsRequest) (*ListSetsReply, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ListSnapshotsReply, error)
+	SimplifyId(context.Context, *SimplifyIdRequest) (*SimplifyIdReply, error)
+	DeleteSet(context.Context, *DeleteRequest) (*DeleteReply, error)
+	DeleteSnapshot(context.Context, *DeleteRequest) (*DeleteReply, error)
 	StartBackup(*StartBackupRequest, FsSnapshot_StartBackupServer) error
 	TryToCreateTemporarySnapshot(*TryToCreateTemporarySnapshotRequest, FsSnapshot_TryToCreateTemporarySnapshotServer) error
 	CloseBackup(*CloseBackupRequest, FsSnapshot_CloseBackupServer) error
@@ -186,6 +219,15 @@ func (UnimplementedFsSnapshotServer) ListSets(context.Context, *ListSetsRequest)
 }
 func (UnimplementedFsSnapshotServer) ListSnapshots(context.Context, *ListSnapshotsRequest) (*ListSnapshotsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshots not implemented")
+}
+func (UnimplementedFsSnapshotServer) SimplifyId(context.Context, *SimplifyIdRequest) (*SimplifyIdReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SimplifyId not implemented")
+}
+func (UnimplementedFsSnapshotServer) DeleteSet(context.Context, *DeleteRequest) (*DeleteReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSet not implemented")
+}
+func (UnimplementedFsSnapshotServer) DeleteSnapshot(context.Context, *DeleteRequest) (*DeleteReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteSnapshot not implemented")
 }
 func (UnimplementedFsSnapshotServer) StartBackup(*StartBackupRequest, FsSnapshot_StartBackupServer) error {
 	return status.Errorf(codes.Unimplemented, "method StartBackup not implemented")
@@ -259,6 +301,60 @@ func _FsSnapshot_ListSnapshots_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(FsSnapshotServer).ListSnapshots(ctx, req.(*ListSnapshotsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FsSnapshot_SimplifyId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SimplifyIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FsSnapshotServer).SimplifyId(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.FsSnapshot/SimplifyId",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FsSnapshotServer).SimplifyId(ctx, req.(*SimplifyIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FsSnapshot_DeleteSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FsSnapshotServer).DeleteSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.FsSnapshot/DeleteSet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FsSnapshotServer).DeleteSet(ctx, req.(*DeleteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FsSnapshot_DeleteSnapshot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FsSnapshotServer).DeleteSnapshot(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.FsSnapshot/DeleteSnapshot",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FsSnapshotServer).DeleteSnapshot(ctx, req.(*DeleteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -344,6 +440,18 @@ var FsSnapshot_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListSnapshots",
 			Handler:    _FsSnapshot_ListSnapshots_Handler,
+		},
+		{
+			MethodName: "SimplifyId",
+			Handler:    _FsSnapshot_SimplifyId_Handler,
+		},
+		{
+			MethodName: "DeleteSet",
+			Handler:    _FsSnapshot_DeleteSet_Handler,
+		},
+		{
+			MethodName: "DeleteSnapshot",
+			Handler:    _FsSnapshot_DeleteSnapshot_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -7,7 +7,7 @@ func newNullSnapshoter() Snapshoter {
 type nullSnapshoter struct {
 }
 
-func (s *nullSnapshoter) SimplifyId(id string) string {
+func (s *nullSnapshoter) SimplifyID(id string) string {
 	return id
 }
 
