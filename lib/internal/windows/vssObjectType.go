@@ -1,6 +1,6 @@
 //go:build windows
 
-package internal_fs_snapshot_windows
+package internal_windows
 
 // vssObjectType is a custom type for the Windows api VSSObjectType type.
 type vssObjectType uint

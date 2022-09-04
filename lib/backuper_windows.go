@@ -10,10 +10,10 @@ import (
 )
 
 type windowsBackuper struct {
-	opts         *internal_fs_snapshot_windows.SnapshotOptions
+	opts         *internal_windows.SnapshotOptions
 	mutex        sync.RWMutex
 	volumes      map[string]*volumeInfo // The keys are all lower case
-	vssResults   []*internal_fs_snapshot_windows.SnapshotsResult
+	vssResults   []*internal_windows.SnapshotsResult
 	infoCallback InfoMessageCallback
 }
 
@@ -55,7 +55,7 @@ func (b *windowsBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (s
 
 	volume := filepath.VolumeName(dir) + `\`
 
-	mounts, err := internal_fs_snapshot_windows.EnumerateMountedFolders(volume)
+	mounts, err := internal_windows.EnumerateMountedFolders(volume)
 	if err != nil {
 		return inputDirectory, err
 	}
@@ -77,7 +77,7 @@ func (b *windowsBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (s
 		b.infoCallback(InfoLevel, "Creating VSS snapshot of "+strings.Join(needed, " ; "))
 	}
 
-	vsr, err := internal_fs_snapshot_windows.CreateSnapshots(needed, b.opts)
+	vsr, err := internal_windows.CreateSnapshots(needed, b.opts)
 	b.vssResults = append(b.vssResults, vsr)
 	if err != nil {
 		b.markFailed(needed...)

@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sys/windows"
 
-	"github.com/pescuma/go-fs-snapshot/lib/internal/windows"
+	internal_windows "github.com/pescuma/go-fs-snapshot/lib/internal/windows"
 )
 
 const simpleIdLength = 7
@@ -24,7 +24,7 @@ func newOSSnapshoter() (Snapshoter, error) {
 		return nil, errors.New("the caller does not have sufficient backup privileges or is not an administrator")
 	}
 
-	is64Bit, err := internal_fs_snapshot_windows.IsRunningOn64BitWindows()
+	is64Bit, err := internal_windows.IsRunningOn64BitWindows()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to detect windows architecture: %s", err.Error())
 	}
@@ -34,12 +34,12 @@ func newOSSnapshoter() (Snapshoter, error) {
 			"Please use an executable compiled for your platform.", runtime.GOARCH)
 	}
 
-	err = internal_fs_snapshot_windows.InitializeCOM()
+	err = internal_windows.InitializeCOM()
 	if err != nil {
 		return nil, err
 	}
 
-	bc, err := internal_fs_snapshot_windows.NewIVSSBackupComponents()
+	bc, err := internal_windows.NewIVSSBackupComponents()
 	bc.Close()
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (s *windowsSnapshoter) ListProviders(filterID string) ([]*Provider, error) 
 		return nil, err
 	}
 
-	enum, err := bc.Query(internal_fs_snapshot_windows.VSS_OBJECT_PROVIDER)
+	enum, err := bc.Query(internal_windows.VSS_OBJECT_PROVIDER)
 	defer enum.Close()
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (s *windowsSnapshoter) ListProviders(filterID string) ([]*Provider, error) 
 	for {
 		var props struct {
 			objectType uint32
-			provider   internal_fs_snapshot_windows.VssProviderProperties
+			provider   internal_windows.VssProviderProperties
 		}
 
 		count, err := enum.Next(1, unsafe.Pointer(&props))
@@ -126,7 +126,7 @@ func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filter
 		return nil, nil, err
 	}
 
-	enum, err := bc.Query(internal_fs_snapshot_windows.VSS_OBJECT_SNAPSHOT)
+	enum, err := bc.Query(internal_windows.VSS_OBJECT_SNAPSHOT)
 	defer enum.Close()
 	if err != nil {
 		return nil, nil, err
@@ -150,7 +150,7 @@ func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filter
 	for {
 		var props struct {
 			objectType uint32
-			snapshot   internal_fs_snapshot_windows.VssSnapshotProperties
+			snapshot   internal_windows.VssSnapshotProperties
 		}
 
 		count, err := enum.Next(1, unsafe.Pointer(&props))
@@ -210,7 +210,7 @@ func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filter
 			sets = append(sets, set)
 		}
 
-		err = internal_fs_snapshot_windows.VssFreeSnapshotProperties(&props.snapshot)
+		err = internal_windows.VssFreeSnapshotProperties(&props.snapshot)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -269,7 +269,7 @@ func (s *windowsSnapshoter) DeleteSet(id string, force bool) (bool, error) {
 		return false, err
 	}
 
-	deleted, _, err := bc.DeleteSnapshots(internal_fs_snapshot_windows.VSS_OBJECT_SNAPSHOT_SET, guid, force)
+	deleted, _, err := bc.DeleteSnapshots(internal_windows.VSS_OBJECT_SNAPSHOT_SET, guid, force)
 
 	if err != nil {
 		return false, err
@@ -293,7 +293,7 @@ func (s *windowsSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) 
 		return false, err
 	}
 
-	deleted, _, err := bc.DeleteSnapshots(internal_fs_snapshot_windows.VSS_OBJECT_SNAPSHOT, guid, force)
+	deleted, _, err := bc.DeleteSnapshots(internal_windows.VSS_OBJECT_SNAPSHOT, guid, force)
 
 	if err != nil {
 		return false, err
@@ -305,8 +305,8 @@ func (s *windowsSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) 
 	return true, nil
 }
 
-func (s *windowsSnapshoter) NewBackupComponentsForManagement() (*internal_fs_snapshot_windows.IVSSBackupComponents, error) {
-	bc, err := internal_fs_snapshot_windows.NewIVSSBackupComponents()
+func (s *windowsSnapshoter) NewBackupComponentsForManagement() (*internal_windows.IVSSBackupComponents, error) {
+	bc, err := internal_windows.NewIVSSBackupComponents()
 	if err != nil {
 		return bc, err
 	}
@@ -316,7 +316,7 @@ func (s *windowsSnapshoter) NewBackupComponentsForManagement() (*internal_fs_sna
 		return bc, err
 	}
 
-	err = bc.SetContext(internal_fs_snapshot_windows.VSS_CTX_ALL)
+	err = bc.SetContext(internal_windows.VSS_CTX_ALL)
 	if err != nil {
 		return bc, err
 	}
@@ -335,11 +335,11 @@ func (s *windowsSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error)
 	}
 
 	return &windowsBackuper{
-		opts: &internal_fs_snapshot_windows.SnapshotOptions{
+		opts: &internal_windows.SnapshotOptions{
 			ProviderID: providerID,
 			Timeout:    opts.Timeout,
 			Writters:   !opts.Simple,
-			InfoCallback: func(level internal_fs_snapshot_windows.MessageLevel, msg string) {
+			InfoCallback: func(level internal_windows.MessageLevel, msg string) {
 				if opts.InfoCallback != nil {
 					opts.InfoCallback(MessageLevel(level), msg)
 				}

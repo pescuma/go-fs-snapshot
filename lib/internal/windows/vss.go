@@ -1,6 +1,6 @@
 //go:build windows
 
-package internal_fs_snapshot_windows
+package internal_windows
 
 import (
 	"fmt"
