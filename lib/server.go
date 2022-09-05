@@ -69,7 +69,7 @@ type server struct {
 
 func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRequest) (*rpc.ListProvidersReply, error) {
 	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.ListProviders(\"%v\")", request.FilterId))
+		s.infoCallback(TraceLevel, "Received request: Snapshoter.ListProviders(\"%v\")", request.FilterId)
 	}
 
 	providers, err := s.snapshoter.ListProviders(request.FilterId)
@@ -89,7 +89,7 @@ func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRe
 
 func (s *server) ListSets(ctx context.Context, request *rpc.ListSetsRequest) (*rpc.ListSetsReply, error) {
 	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.ListSets(\"%v\")", request.FilterId))
+		s.infoCallback(TraceLevel, "Received request: Snapshoter.ListSets(\"%v\")", request.FilterId)
 	}
 
 	sets, err := s.snapshoter.ListSets(request.FilterId)
@@ -109,7 +109,7 @@ func (s *server) ListSets(ctx context.Context, request *rpc.ListSetsRequest) (*r
 
 func (s *server) ListSnapshots(ctx context.Context, request *rpc.ListSnapshotsRequest) (*rpc.ListSnapshotsReply, error) {
 	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.ListSnapshots(\"%v\")", request.FilterId))
+		s.infoCallback(TraceLevel, "Received request: Snapshoter.ListSnapshots(\"%v\")", request.FilterId)
 	}
 
 	snaps, err := s.snapshoter.ListSnapshots(request.FilterId)
@@ -129,7 +129,7 @@ func (s *server) ListSnapshots(ctx context.Context, request *rpc.ListSnapshotsRe
 
 func (s *server) SimplifyId(ctx context.Context, request *rpc.SimplifyIdRequest) (*rpc.SimplifyIdReply, error) {
 	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.SimplifyID(\"%v\")", request.Id))
+		s.infoCallback(TraceLevel, "Received request: Snapshoter.SimplifyID(\"%v\")", request.Id)
 	}
 
 	simpleId := s.snapshoter.SimplifyID(request.Id)
@@ -141,7 +141,7 @@ func (s *server) SimplifyId(ctx context.Context, request *rpc.SimplifyIdRequest)
 
 func (s *server) DeleteSet(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
 	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.DeleteSet(\"%v\", %v)", request.Id, request.Force))
+		s.infoCallback(TraceLevel, "Received request: Snapshoter.DeleteSet(\"%v\", %v)", request.Id, request.Force)
 	}
 
 	deleted, err := s.snapshoter.DeleteSet(request.Id, request.Force)
@@ -156,7 +156,7 @@ func (s *server) DeleteSet(ctx context.Context, request *rpc.DeleteRequest) (*rp
 
 func (s *server) DeleteSnapshot(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
 	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.DeleteSnapshot(\"%v\", %v)", request.Id, request.Force))
+		s.infoCallback(TraceLevel, "Received request: Snapshoter.DeleteSnapshot(\"%v\", %v)", request.Id, request.Force)
 	}
 
 	deleted, err := s.snapshoter.DeleteSnapshot(request.Id, request.Force)

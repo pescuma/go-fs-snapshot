@@ -25,7 +25,7 @@ func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 	}
 
 	if cfg.InfoCallback != nil {
-		cfg.InfoCallback(DetailsLevel, fmt.Sprintf("Connected with server at %v", addr))
+		cfg.InfoCallback(DetailsLevel, "Connected with server at %v", addr)
 	}
 
 	result.client = rpc.NewFsSnapshotClient(result.conn)
@@ -43,6 +43,10 @@ type clientSnapshoter struct {
 }
 
 func (s *clientSnapshoter) ListProviders(filterID string) ([]*Provider, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, "Sending server request: ListProviders(\"%v\")", filterID)
+	}
+
 	reply, err := s.client.ListProviders(s.ctx, &rpc.ListProvidersRequest{
 		FilterId: filterID,
 	})
@@ -59,6 +63,10 @@ func (s *clientSnapshoter) ListProviders(filterID string) ([]*Provider, error) {
 }
 
 func (s *clientSnapshoter) ListSets(filterID string) ([]*SnapshotSet, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, "Sending server request: ListSets(\"%v\")", filterID)
+	}
+
 	reply, err := s.client.ListSets(s.ctx, &rpc.ListSetsRequest{
 		FilterId: filterID,
 	})
@@ -75,6 +83,10 @@ func (s *clientSnapshoter) ListSets(filterID string) ([]*SnapshotSet, error) {
 }
 
 func (s *clientSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, "Sending server request: ListSnapshots(\"%v\")", filterID)
+	}
+
 	reply, err := s.client.ListSnapshots(s.ctx, &rpc.ListSnapshotsRequest{
 		FilterId: filterID,
 	})
@@ -101,6 +113,10 @@ func (s *clientSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 }
 
 func (s *clientSnapshoter) SimplifyID(id string) string {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, "Sending server request: SimplifyId(\"%v\")", id)
+	}
+
 	reply, err := s.client.SimplifyId(s.ctx, &rpc.SimplifyIdRequest{
 		Id: id,
 	})
@@ -113,6 +129,10 @@ func (s *clientSnapshoter) SimplifyID(id string) string {
 }
 
 func (s *clientSnapshoter) DeleteSet(id string, force bool) (bool, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, "Sending server request: DeleteSet(\"%v\", %v)", id, force)
+	}
+
 	reply, err := s.client.DeleteSet(s.ctx, &rpc.DeleteRequest{
 		Id:    id,
 		Force: force,
@@ -125,6 +145,10 @@ func (s *clientSnapshoter) DeleteSet(id string, force bool) (bool, error) {
 }
 
 func (s *clientSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, "Sending server request: DeleteSnapshot(\"%v\", %v)", id, force)
+	}
+
 	reply, err := s.client.DeleteSnapshot(s.ctx, &rpc.DeleteRequest{
 		Id:    id,
 		Force: force,
