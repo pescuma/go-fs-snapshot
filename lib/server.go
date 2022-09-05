@@ -16,7 +16,10 @@ const DefaultIP = "localhost"
 const DefaultPort = 33721
 
 func StartServer(snapshoter Snapshoter, cfg *ServerConfig) error {
-	cfg.SetDefaults()
+	if cfg == nil {
+		cfg = &ServerConfig{}
+	}
+	cfg.setDefaults()
 
 	lis, err := net.Listen("tcp", cfg.Address())
 	if err != nil {
@@ -45,7 +48,7 @@ type ServerConfig struct {
 	InfoCallback   InfoMessageCallback
 }
 
-func (cfg *ServerConfig) SetDefaults() {
+func (cfg *ServerConfig) setDefaults() {
 	if cfg.IP == "" {
 		cfg.IP = DefaultIP
 	}

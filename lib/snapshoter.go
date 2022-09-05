@@ -63,14 +63,6 @@ type Snapshot struct {
 	Attributes   string
 }
 
-type SnapshoterConfig struct {
-	InfoCallback InfoMessageCallback
-
-	ConnectionType ConnectionType
-	ServerIP       string
-	ServerPort     int
-}
-
 type ConnectionType int
 
 const (
@@ -106,12 +98,7 @@ func NewSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 	if cfg == nil {
 		cfg = &SnapshoterConfig{}
 	}
-	if cfg.ServerIP == "" {
-		cfg.ServerIP = DefaultIP
-	}
-	if cfg.ServerPort == 0 {
-		cfg.ServerPort = DefaultPort
-	}
+	cfg.setDefaults()
 
 	var result Snapshoter
 	var errLocal error
@@ -157,4 +144,24 @@ func newClientSnapshoterStartingServer(cfg *SnapshoterConfig) (Snapshoter, error
 	}
 
 	return newClientSnapshoter(cfg)
+}
+
+type SnapshoterConfig struct {
+	InfoCallback InfoMessageCallback
+
+	ConnectionType ConnectionType
+	ServerIP       string
+	ServerPort     int
+}
+
+func (cfg *SnapshoterConfig) setDefaults() {
+	if cfg.ServerIP == "" {
+		cfg.ServerIP = DefaultIP
+	}
+	if cfg.ServerPort == 0 {
+		cfg.ServerPort = DefaultPort
+	}
+	if cfg.InfoCallback == nil {
+		cfg.InfoCallback = func(level MessageLevel, format string, a ...interface{}) {}
+	}
 }
