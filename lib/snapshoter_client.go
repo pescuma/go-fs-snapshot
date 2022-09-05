@@ -13,6 +13,7 @@ import (
 
 func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 	var err error
+
 	result := &clientSnapshoter{
 		infoCallback: cfg.InfoCallback,
 	}

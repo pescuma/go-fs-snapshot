@@ -45,8 +45,13 @@ func newOSSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 		return nil, err
 	}
 
+	infoCb := cfg.InfoCallback
+	if infoCb == nil {
+		infoCb = func(level MessageLevel, format string, a ...interface{}) {}
+	}
+
 	return &windowsSnapshoter{
-		infoCallback: cfg.InfoCallback,
+		infoCallback: infoCb,
 	}, nil
 }
 
@@ -342,10 +347,8 @@ func (s *windowsSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error)
 			ProviderID: providerID,
 			Timeout:    opts.Timeout,
 			Writters:   !opts.Simple,
-			InfoCallback: func(level internal_windows.MessageLevel, msg string) {
-				if s.infoCallback != nil {
-					s.infoCallback(MessageLevel(level), msg)
-				}
+			InfoCallback: func(level internal_windows.MessageLevel, format string, a ...interface{}) {
+				s.infoCallback(MessageLevel(level), format, a)
 			},
 		},
 		infoCallback: s.infoCallback,

@@ -17,6 +17,10 @@ const backupPrivilege = "SeBackupPrivilege"
 
 // CurrentUserCanCreateSnapshots returns information if the current user can create snapshots
 func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (can bool, err error) {
+	if infoCb == nil {
+		infoCb = func(level MessageLevel, format string, a ...interface{}) {}
+	}
+
 	token, err := wintoken.OpenProcessToken(0, wintoken.TokenPrimary)
 	if err != nil {
 		return false, errors.Wrap(err, "Failed to get process token")
@@ -34,7 +38,7 @@ func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (can bool, err er
 		return false, err
 	}
 
-	infoCb(InfoLevel, fmt.Sprintf("User %v has %v", username, privilegesAsSring(privileges)))
+	infoCb(InfoLevel, "VSS User %v has %v", username, privilegesAsSring(privileges))
 
 	has := false
 	for _, p := range privileges {
@@ -49,6 +53,10 @@ func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (can bool, err er
 // EnableSnapshotsForUser enables the current user to run snaphsots.
 // This generally must be run from a prompt with elevated privileges (root or administrator).
 func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
+	if infoCb == nil {
+		infoCb = func(level MessageLevel, format string, a ...interface{}) {}
+	}
+
 	policy, err := gowin32.OpenLocalSecurityPolicy()
 	if err != nil {
 		return err
@@ -62,15 +70,15 @@ func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
 		return err
 	}
 
-	infoCb(InfoLevel, fmt.Sprintf("User information:\n   user: %v\n   sid: %v\n   domain: %v\n   type: %v",
-		username, sid, domain, sidType))
+	infoCb(InfoLevel, "User information:\n   user: %v\n   sid: %v\n   domain: %v\n   type: %v",
+		username, sid, domain, sidType)
 
 	rights, err := policy.GetAccountRights(sid)
 	if err != nil && err != windows.ERROR_FILE_NOT_FOUND { // https://stackoverflow.com/a/4615926
 		return err
 	}
 
-	infoCb(DetailsLevel, fmt.Sprintf("User %v has %v", username, rightsAsSring(rights)))
+	infoCb(DetailsLevel, "User %v has %v", username, rightsAsSring(rights))
 
 	has := false
 	for _, right := range rights {
@@ -80,7 +88,7 @@ func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
 	}
 
 	if !has {
-		infoCb(OutputLevel, fmt.Sprintf("Granting %v to user %v", backupPrivilege, username))
+		infoCb(OutputLevel, "Granting %v to user %v", backupPrivilege, username)
 
 		err = policy.AddAccountRight(sid, backupPrivilege)
 		if err != nil {
@@ -92,10 +100,10 @@ func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
 			return err
 		}
 
-		infoCb(InfoLevel, fmt.Sprintf("User %v now has %v", username, rightsAsSring(rights)))
+		infoCb(InfoLevel, "User %v now has %v", username, rightsAsSring(rights))
 
 	} else {
-		infoCb(OutputLevel, fmt.Sprintf("User %v already has %v", username, backupPrivilege))
+		infoCb(OutputLevel, "User %v already has %v", username, backupPrivilege)
 	}
 
 	return nil

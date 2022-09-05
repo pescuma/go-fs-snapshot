@@ -3,7 +3,6 @@
 package internal_windows
 
 import (
-	"fmt"
 	"path/filepath"
 	"runtime"
 	"syscall"
@@ -68,12 +67,13 @@ type SnapshotOptions struct {
 	InfoCallback InfoMessageCallback
 }
 
-type InfoMessageCallback func(level MessageLevel, msg string)
+type InfoMessageCallback func(level MessageLevel, format string, a ...interface{})
 
 type MessageLevel int
 
 const (
-	InfoLevel = iota
+	OutputLevel = iota
+	InfoLevel
 	DetailsLevel
 	TraceLevel
 )
@@ -105,17 +105,17 @@ func CreateSnapshots(volumes []string, opts *SnapshotOptions) (*SnapshotsResult,
 		return &r, err
 	}
 
-	opts.InfoCallback(TraceLevel, "InitializeForBackup()")
+	opts.InfoCallback(TraceLevel, "VSS InitializeForBackup()")
 	err = r.bc.InitializeForBackup()
 	if err != nil {
 		return &r, err
 	}
 
 	if opts.Writters {
-		opts.InfoCallback(TraceLevel, "SetContext(VSS_CTX_BACKUP)")
+		opts.InfoCallback(TraceLevel, "VSS SetContext(VSS_CTX_BACKUP)")
 		err = r.bc.SetContext(VSS_CTX_BACKUP)
 	} else {
-		opts.InfoCallback(TraceLevel, "SetContext(VSS_CTX_FILE_SHARE_BACKUP)")
+		opts.InfoCallback(TraceLevel, "VSS SetContext(VSS_CTX_FILE_SHARE_BACKUP)")
 		err = r.bc.SetContext(VSS_CTX_FILE_SHARE_BACKUP)
 	}
 	if err != nil {
@@ -123,20 +123,20 @@ func CreateSnapshots(volumes []string, opts *SnapshotOptions) (*SnapshotsResult,
 	}
 
 	// see https://techcommunity.microsoft.com/t5/Storage-at-Microsoft/What-is-the-difference-between-VSS-Full-Backup-and-VSS-Copy/ba-p/423575
-	opts.InfoCallback(TraceLevel, "SetBackupState(false, false, VSS_BT_COPY, false)")
+	opts.InfoCallback(TraceLevel, "VSS SetBackupState(false, false, VSS_BT_COPY, false)")
 	err = r.bc.SetBackupState(false, false, VSS_BT_COPY, false)
 	if err != nil {
 		return &r, err
 	}
 
 	if opts.Writters {
-		opts.InfoCallback(TraceLevel, "GatherWriterMetadata()")
+		opts.InfoCallback(TraceLevel, "VSS GatherWriterMetadata()")
 		err = callAndWait(r.bc.GatherWriterMetadata, opts.Timeout-time.Since(start))
 		if err != nil {
 			return &r, err
 		}
 
-		opts.InfoCallback(TraceLevel, "FreeWriterMetadata()")
+		opts.InfoCallback(TraceLevel, "VSS FreeWriterMetadata()")
 		err = r.bc.FreeWriterMetadata()
 		if err != nil {
 			return &r, err
@@ -153,7 +153,7 @@ func CreateSnapshots(volumes []string, opts *SnapshotOptions) (*SnapshotsResult,
 		if s {
 			atLeastOneVolumeSupported = true
 		} else {
-			opts.InfoCallback(DetailsLevel, fmt.Sprintf("Snapshots not supported in volume %v", volume))
+			opts.InfoCallback(DetailsLevel, "Snapshots not supported in volume %v", volume)
 		}
 	}
 
@@ -162,13 +162,13 @@ func CreateSnapshots(volumes []string, opts *SnapshotOptions) (*SnapshotsResult,
 		return &r, nil
 	}
 
-	opts.InfoCallback(TraceLevel, "StartSnapshotSet()")
+	opts.InfoCallback(TraceLevel, "VSS StartSnapshotSet()")
 	r.setID, err = r.bc.StartSnapshotSet()
 	if err != nil {
 		return &r, err
 	}
 
-	opts.InfoCallback(TraceLevel, fmt.Sprintf("Set ID: %v", r.setID))
+	opts.InfoCallback(TraceLevel, "Set ID: %v", r.setID)
 
 	for _, volume := range volumes {
 		info := &volumeSnapshotInfo{}
@@ -180,38 +180,38 @@ func CreateSnapshots(volumes []string, opts *SnapshotOptions) (*SnapshotsResult,
 		}
 
 		if s {
-			opts.InfoCallback(TraceLevel, fmt.Sprintf("AddToSnapshotSet(%v, %v)", r.opts.ProviderID, volume))
+			opts.InfoCallback(TraceLevel, "VSS AddToSnapshotSet(%v, %v)", r.opts.ProviderID, volume)
 			info.id, err = r.bc.AddToSnapshotSet(r.opts.ProviderID, volume)
 			if err != nil {
 				return &r, err
 			}
 
-			opts.InfoCallback(TraceLevel, fmt.Sprintf("Volume %v snapshot ID: %v", volume, info.id))
+			opts.InfoCallback(TraceLevel, "Volume %v snapshot ID: %v", volume, info.id)
 		}
 	}
 
 	if opts.Writters {
-		opts.InfoCallback(TraceLevel, "PrepareForBackup()")
+		opts.InfoCallback(TraceLevel, "VSS PrepareForBackup()")
 		err = callAndWait(r.bc.PrepareForBackup, opts.Timeout-time.Since(start))
 		r.prepareForBackupCalled = true
 		if err != nil {
 			return &r, err
 		}
 
-		opts.InfoCallback(TraceLevel, "GatherWriterStatus()")
+		opts.InfoCallback(TraceLevel, "VSS GatherWriterStatus()")
 		err = callAndWait(r.bc.GatherWriterStatus, opts.Timeout-time.Since(start))
 		if err != nil {
 			return &r, err
 		}
 
-		opts.InfoCallback(TraceLevel, "FreeWriterStatus()")
+		opts.InfoCallback(TraceLevel, "VSS FreeWriterStatus()")
 		err = r.bc.FreeWriterStatus()
 		if err != nil {
 			return &r, err
 		}
 	}
 
-	opts.InfoCallback(TraceLevel, "DoSnapshotSet()")
+	opts.InfoCallback(TraceLevel, "VSS DoSnapshotSet()")
 	err = callAndWait(r.bc.DoSnapshotSet, opts.Timeout-time.Since(start))
 	r.doSnapshotSetCalled = true
 	if err != nil {
@@ -219,13 +219,13 @@ func CreateSnapshots(volumes []string, opts *SnapshotOptions) (*SnapshotsResult,
 	}
 
 	if opts.Writters {
-		opts.InfoCallback(TraceLevel, "GatherWriterStatus()")
+		opts.InfoCallback(TraceLevel, "VSS GatherWriterStatus()")
 		err = callAndWait(r.bc.GatherWriterStatus, opts.Timeout-time.Since(start))
 		if err != nil {
 			return &r, err
 		}
 
-		opts.InfoCallback(TraceLevel, "FreeWriterStatus()")
+		opts.InfoCallback(TraceLevel, "VSS FreeWriterStatus()")
 		err = r.bc.FreeWriterStatus()
 		if err != nil {
 			return &r, err
@@ -239,7 +239,7 @@ func CreateSnapshots(volumes []string, opts *SnapshotOptions) (*SnapshotsResult,
 			continue
 		}
 
-		opts.InfoCallback(TraceLevel, fmt.Sprintf("GetSnapshotProperties(%v)", info.id))
+		opts.InfoCallback(TraceLevel, "VSS GetSnapshotProperties(%v)", info.id)
 		var properties VssSnapshotProperties
 		err = r.bc.GetSnapshotProperties(info.id, &properties)
 		if err != nil {
@@ -278,7 +278,7 @@ func (r *SnapshotsResult) GetSnapshotPath(volume string) string {
 func (r *SnapshotsResult) Close() {
 	for _, volume := range r.volumes {
 		if volume.properties != nil {
-			r.opts.InfoCallback(TraceLevel, fmt.Sprintf("VssFreeSnapshotProperties(%v)", volume.id))
+			r.opts.InfoCallback(TraceLevel, "VSS VssFreeSnapshotProperties(%v)", volume.id)
 			_ = VssFreeSnapshotProperties(volume.properties)
 		}
 	}
@@ -287,23 +287,23 @@ func (r *SnapshotsResult) Close() {
 		if r.opts.Writters {
 			// Use the full timeout here to at least all the methods once
 
-			r.opts.InfoCallback(TraceLevel, "BackupComplete()")
+			r.opts.InfoCallback(TraceLevel, "VSS BackupComplete()")
 			_ = callAndWait(r.bc.BackupComplete, r.opts.Timeout)
 
-			r.opts.InfoCallback(TraceLevel, "GatherWriterStatus()")
+			r.opts.InfoCallback(TraceLevel, "VSS GatherWriterStatus()")
 			_ = callAndWait(r.bc.GatherWriterStatus, r.opts.Timeout)
 
-			r.opts.InfoCallback(TraceLevel, "FreeWriterStatus()")
+			r.opts.InfoCallback(TraceLevel, "VSS FreeWriterStatus()")
 			_ = r.bc.FreeWriterStatus()
 		}
 
 	} else if r.prepareForBackupCalled {
-		r.opts.InfoCallback(TraceLevel, "AbortBackup()")
+		r.opts.InfoCallback(TraceLevel, "VSS AbortBackup()")
 		_ = r.bc.AbortBackup()
 	}
 
 	if r.setID != nil {
-		r.opts.InfoCallback(TraceLevel, fmt.Sprintf("DeleteSnapshots(VSS_OBJECT_SNAPSHOT_SET, %v, true)", r.setID))
+		r.opts.InfoCallback(TraceLevel, "VSS DeleteSnapshots(VSS_OBJECT_SNAPSHOT_SET, %v, true)", r.setID)
 		_, _, _ = r.bc.DeleteSnapshots(VSS_OBJECT_SNAPSHOT_SET, r.setID, true)
 	}
 
