@@ -25,9 +25,7 @@ func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 		return nil, errors.Wrapf(err, "could not connect to server: %v", addr)
 	}
 
-	if cfg.InfoCallback != nil {
-		cfg.InfoCallback(DetailsLevel, "Connected with server at %v", addr)
-	}
+	cfg.InfoCallback(DetailsLevel, "Connected to server at: %v", addr)
 
 	result.client = rpc.NewFsSnapshotClient(result.conn)
 	result.ctx, result.cancel = context.WithCancel(context.Background())
@@ -44,14 +42,13 @@ type clientSnapshoter struct {
 }
 
 func (s *clientSnapshoter) ListProviders(filterID string) ([]*Provider, error) {
-	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, "Sending server request: ListProviders(\"%v\")", filterID)
-	}
+	s.infoCallback(TraceLevel, "GRPC Sending server request: ListProviders(\"%v\")", filterID)
 
 	reply, err := s.client.ListProviders(s.ctx, &rpc.ListProvidersRequest{
 		FilterId: filterID,
 	})
 	if err != nil {
+		s.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
 		return nil, err
 	}
 
@@ -64,14 +61,13 @@ func (s *clientSnapshoter) ListProviders(filterID string) ([]*Provider, error) {
 }
 
 func (s *clientSnapshoter) ListSets(filterID string) ([]*SnapshotSet, error) {
-	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, "Sending server request: ListSets(\"%v\")", filterID)
-	}
+	s.infoCallback(TraceLevel, "GRPC Sending server request: ListSets(\"%v\")", filterID)
 
 	reply, err := s.client.ListSets(s.ctx, &rpc.ListSetsRequest{
 		FilterId: filterID,
 	})
 	if err != nil {
+		s.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
 		return nil, err
 	}
 
@@ -84,14 +80,13 @@ func (s *clientSnapshoter) ListSets(filterID string) ([]*SnapshotSet, error) {
 }
 
 func (s *clientSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
-	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, "Sending server request: ListSnapshots(\"%v\")", filterID)
-	}
+	s.infoCallback(TraceLevel, "GRPC Sending server request: ListSnapshots(\"%v\")", filterID)
 
 	reply, err := s.client.ListSnapshots(s.ctx, &rpc.ListSnapshotsRequest{
 		FilterId: filterID,
 	})
 	if err != nil {
+		s.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
 		return nil, err
 	}
 
@@ -114,31 +109,28 @@ func (s *clientSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 }
 
 func (s *clientSnapshoter) SimplifyID(id string) string {
-	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, "Sending server request: SimplifyId(\"%v\")", id)
-	}
+	s.infoCallback(TraceLevel, "GRPC Sending server request: SimplifyId(\"%v\")", id)
 
 	reply, err := s.client.SimplifyId(s.ctx, &rpc.SimplifyIdRequest{
 		Id: id,
 	})
 	if err != nil {
-		// Nothing else that can be done here
-		return id
+		s.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
+		return id // Nothing else that can be done here
 	}
 
 	return reply.SimpleId
 }
 
 func (s *clientSnapshoter) DeleteSet(id string, force bool) (bool, error) {
-	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, "Sending server request: DeleteSet(\"%v\", %v)", id, force)
-	}
+	s.infoCallback(TraceLevel, "GRPC Sending server request: DeleteSet(\"%v\", %v)", id, force)
 
 	reply, err := s.client.DeleteSet(s.ctx, &rpc.DeleteRequest{
 		Id:    id,
 		Force: force,
 	})
 	if err != nil {
+		s.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
 		return false, err
 	}
 
@@ -146,15 +138,14 @@ func (s *clientSnapshoter) DeleteSet(id string, force bool) (bool, error) {
 }
 
 func (s *clientSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
-	if s.infoCallback != nil {
-		s.infoCallback(TraceLevel, "Sending server request: DeleteSnapshot(\"%v\", %v)", id, force)
-	}
+	s.infoCallback(TraceLevel, "GRPC Sending server request: DeleteSnapshot(\"%v\", %v)", id, force)
 
 	reply, err := s.client.DeleteSnapshot(s.ctx, &rpc.DeleteRequest{
 		Id:    id,
 		Force: force,
 	})
 	if err != nil {
+		s.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
 		return false, err
 	}
 

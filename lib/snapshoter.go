@@ -1,7 +1,6 @@
 package fs_snapshot
 
 import (
-	"os/exec"
 	"time"
 )
 
@@ -105,7 +104,7 @@ func NewSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 	var errServer error
 
 	if cfg.ConnectionType != ServerOnly {
-		result, errLocal = newOSSnapshoter(cfg)
+		result, errLocal = newSnapshoterForOS(cfg)
 		if errLocal == nil {
 			return result, nil
 		}
@@ -136,8 +135,7 @@ func newClientSnapshoterStartingServer(cfg *SnapshoterConfig) (Snapshoter, error
 		return nil, err
 	}
 
-	cmd := exec.Command("schtasks", "/Run", "/TN", "\\fs_snapshot\\server start", "/HRESULT")
-	_, err1 := cmd.Output()
+	err1 := startServerForOS(cfg.InfoCallback)
 	if err1 != nil {
 		// Ignore error starting server and just return the connection error
 		return nil, err

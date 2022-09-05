@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FsSnapshotClient interface {
+	CanCreateSnapshots(ctx context.Context, in *CanCreateSnapshotsRequest, opts ...grpc.CallOption) (*CanCreateSnapshotsReply, error)
 	ListProviders(ctx context.Context, in *ListProvidersRequest, opts ...grpc.CallOption) (*ListProvidersReply, error)
 	ListSets(ctx context.Context, in *ListSetsRequest, opts ...grpc.CallOption) (*ListSetsReply, error)
 	ListSnapshots(ctx context.Context, in *ListSnapshotsRequest, opts ...grpc.CallOption) (*ListSnapshotsReply, error)
@@ -39,6 +40,15 @@ type fsSnapshotClient struct {
 
 func NewFsSnapshotClient(cc grpc.ClientConnInterface) FsSnapshotClient {
 	return &fsSnapshotClient{cc}
+}
+
+func (c *fsSnapshotClient) CanCreateSnapshots(ctx context.Context, in *CanCreateSnapshotsRequest, opts ...grpc.CallOption) (*CanCreateSnapshotsReply, error) {
+	out := new(CanCreateSnapshotsReply)
+	err := c.cc.Invoke(ctx, "/rpc.FsSnapshot/CanCreateSnapshots", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *fsSnapshotClient) ListProviders(ctx context.Context, in *ListProvidersRequest, opts ...grpc.CallOption) (*ListProvidersReply, error) {
@@ -195,6 +205,7 @@ func (x *fsSnapshotCloseBackupClient) Recv() (*CloseBackupReply, error) {
 // All implementations must embed UnimplementedFsSnapshotServer
 // for forward compatibility
 type FsSnapshotServer interface {
+	CanCreateSnapshots(context.Context, *CanCreateSnapshotsRequest) (*CanCreateSnapshotsReply, error)
 	ListProviders(context.Context, *ListProvidersRequest) (*ListProvidersReply, error)
 	ListSets(context.Context, *ListSetsRequest) (*ListSetsReply, error)
 	ListSnapshots(context.Context, *ListSnapshotsRequest) (*ListSnapshotsReply, error)
@@ -211,6 +222,9 @@ type FsSnapshotServer interface {
 type UnimplementedFsSnapshotServer struct {
 }
 
+func (UnimplementedFsSnapshotServer) CanCreateSnapshots(context.Context, *CanCreateSnapshotsRequest) (*CanCreateSnapshotsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CanCreateSnapshots not implemented")
+}
 func (UnimplementedFsSnapshotServer) ListProviders(context.Context, *ListProvidersRequest) (*ListProvidersReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListProviders not implemented")
 }
@@ -249,6 +263,24 @@ type UnsafeFsSnapshotServer interface {
 
 func RegisterFsSnapshotServer(s grpc.ServiceRegistrar, srv FsSnapshotServer) {
 	s.RegisterService(&FsSnapshot_ServiceDesc, srv)
+}
+
+func _FsSnapshot_CanCreateSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CanCreateSnapshotsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FsSnapshotServer).CanCreateSnapshots(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.FsSnapshot/CanCreateSnapshots",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FsSnapshotServer).CanCreateSnapshots(ctx, req.(*CanCreateSnapshotsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _FsSnapshot_ListProviders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -429,6 +461,10 @@ var FsSnapshot_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "rpc.FsSnapshot",
 	HandlerType: (*FsSnapshotServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CanCreateSnapshots",
+			Handler:    _FsSnapshot_CanCreateSnapshots_Handler,
+		},
 		{
 			MethodName: "ListProviders",
 			Handler:    _FsSnapshot_ListProviders_Handler,

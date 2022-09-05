@@ -26,7 +26,7 @@ func (c *console) NewInfoMessageCallback() func(level fs_snapshot.MessageLevel, 
 			return
 		}
 
-		c.Printlf(level, format, a)
+		c.Printlf(level, format, a...)
 	}
 }
 
@@ -53,10 +53,7 @@ func (c *console) Printl(level fs_snapshot.MessageLevel, msg string) {
 		fmt.Println(msg)
 
 	case fs_snapshot.DetailsLevel:
-		msgs := strings.Split(msg, "\n")
-		for _, m := range msgs {
-			fmt.Println("[DETAIL] " + m)
-		}
+		fmt.Println(msg)
 
 	case fs_snapshot.TraceLevel:
 		msgs := strings.Split(msg, "\n")

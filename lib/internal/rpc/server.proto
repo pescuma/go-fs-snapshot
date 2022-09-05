@@ -5,6 +5,7 @@ option go_package = "github.com/pescuma/go-fs-snapshot/internal/rpc";
 package rpc;
 
 service FsSnapshot {
+  rpc CanCreateSnapshots(CanCreateSnapshotsRequest) returns (CanCreateSnapshotsReply) {}
   rpc ListProviders(ListProvidersRequest) returns (ListProvidersReply) {}
   rpc ListSets(ListSetsRequest) returns (ListSetsReply) {}
   rpc ListSnapshots(ListSnapshotsRequest) returns (ListSnapshotsReply) {}
@@ -15,6 +16,13 @@ service FsSnapshot {
   rpc TryToCreateTemporarySnapshot(TryToCreateTemporarySnapshotRequest) returns (stream TryToCreateTemporarySnapshotReply) {}
   rpc CloseBackup (CloseBackupRequest) returns (stream CloseBackupReply) {}
 }
+
+message CanCreateSnapshotsRequest {
+}
+message CanCreateSnapshotsReply {
+  bool can = 1;
+}
+
 
 message ListProvidersRequest {
   string filterId = 1;

@@ -32,7 +32,7 @@ func StartServer(snapshoter Snapshoter, cfg *ServerConfig) error {
 		infoCallback: cfg.InfoCallback,
 	})
 
-	cfg.InfoCallback(OutputLevel, "server listening at %v", lis.Addr())
+	cfg.InfoCallback(OutputLevel, "fs_snapshot server listening at: %v", lis.Addr())
 
 	if err = s.Serve(lis); err != nil {
 		return err
@@ -71,8 +71,19 @@ type server struct {
 	infoCallback InfoMessageCallback
 }
 
+func (s *server) CanCreateSnapshots(ctx context.Context, request *rpc.CanCreateSnapshotsRequest) (*rpc.CanCreateSnapshotsReply, error) {
+	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.CanCreateSnapshots()")
+
+	// If the server has started it can create snapshots, at least for now
+	reply := rpc.CanCreateSnapshotsReply{
+		Can: true,
+	}
+
+	return &reply, nil
+}
+
 func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRequest) (*rpc.ListProvidersReply, error) {
-	s.infoCallback(TraceLevel, "Received request: Snapshoter.ListProviders(\"%v\")", request.FilterId)
+	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.ListProviders(\"%v\")", request.FilterId)
 
 	providers, err := s.snapshoter.ListProviders(request.FilterId)
 	if err != nil {
@@ -90,7 +101,7 @@ func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRe
 }
 
 func (s *server) ListSets(ctx context.Context, request *rpc.ListSetsRequest) (*rpc.ListSetsReply, error) {
-	s.infoCallback(TraceLevel, "Received request: Snapshoter.ListSets(\"%v\")", request.FilterId)
+	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.ListSets(\"%v\")", request.FilterId)
 
 	sets, err := s.snapshoter.ListSets(request.FilterId)
 	if err != nil {
@@ -108,7 +119,7 @@ func (s *server) ListSets(ctx context.Context, request *rpc.ListSetsRequest) (*r
 }
 
 func (s *server) ListSnapshots(ctx context.Context, request *rpc.ListSnapshotsRequest) (*rpc.ListSnapshotsReply, error) {
-	s.infoCallback(TraceLevel, "Received request: Snapshoter.ListSnapshots(\"%v\")", request.FilterId)
+	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.ListSnapshots(\"%v\")", request.FilterId)
 
 	snaps, err := s.snapshoter.ListSnapshots(request.FilterId)
 	if err != nil {
@@ -126,7 +137,7 @@ func (s *server) ListSnapshots(ctx context.Context, request *rpc.ListSnapshotsRe
 }
 
 func (s *server) SimplifyId(ctx context.Context, request *rpc.SimplifyIdRequest) (*rpc.SimplifyIdReply, error) {
-	s.infoCallback(TraceLevel, "Received request: Snapshoter.SimplifyID(\"%v\")", request.Id)
+	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.SimplifyID(\"%v\")", request.Id)
 
 	simpleId := s.snapshoter.SimplifyID(request.Id)
 
@@ -136,7 +147,7 @@ func (s *server) SimplifyId(ctx context.Context, request *rpc.SimplifyIdRequest)
 }
 
 func (s *server) DeleteSet(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
-	s.infoCallback(TraceLevel, "Received request: Snapshoter.DeleteSet(\"%v\", %v)", request.Id, request.Force)
+	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.DeleteSet(\"%v\", %v)", request.Id, request.Force)
 
 	deleted, err := s.snapshoter.DeleteSet(request.Id, request.Force)
 	if err != nil {
@@ -149,7 +160,7 @@ func (s *server) DeleteSet(ctx context.Context, request *rpc.DeleteRequest) (*rp
 }
 
 func (s *server) DeleteSnapshot(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
-	s.infoCallback(TraceLevel, "Received request: Snapshoter.DeleteSnapshot(\"%v\", %v)", request.Id, request.Force)
+	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.DeleteSnapshot(\"%v\", %v)", request.Id, request.Force)
 
 	deleted, err := s.snapshoter.DeleteSnapshot(request.Id, request.Force)
 	if err != nil {

@@ -4,6 +4,7 @@ package fs_snapshot
 
 import (
 	"os"
+	"os/exec"
 	"runtime"
 	"sort"
 	"strings"
@@ -18,7 +19,21 @@ import (
 
 const simpleIdLength = 7
 
-func newOSSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
+func startServerForOS(infoCb InfoMessageCallback) error {
+	infoCb(TraceLevel, "Running: schtasks /Run /TN \"\\fs_snapshot\\server start\" /HRESULT")
+
+	cmd := exec.Command("schtasks", "/Run", "/TN", "\\fs_snapshot\\server start", "/HRESULT")
+	_, err := cmd.Output()
+
+	if err != nil {
+		infoCb(TraceLevel, "Error running schtasks: %v", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func newSnapshoterForOS(cfg *SnapshoterConfig) (Snapshoter, error) {
 	err := initializePrivileges()
 	if err != nil {
 		return nil, errors.New("the caller does not have sufficient backup privileges or is not an administrator")
