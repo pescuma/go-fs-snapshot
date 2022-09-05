@@ -1,13 +1,9 @@
 package cli
 
 import (
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
-	fs_snapshot "github.com/pescuma/go-fs-snapshot/lib"
+	"github.com/pescuma/go-fs-snapshot/lib"
 )
 
 type serverStartCmd struct {
@@ -17,27 +13,31 @@ type serverStartCmd struct {
 
 func (c *serverStartCmd) Run(ctx *context) error {
 	var err error
-	cfg := fs_snapshot.ServerConfig{}
 
+	var ip string
+	var port int
 	if c.Bind != "" {
-		parts := strings.Split(c.Bind, ":")
-		if len(parts) != 2 {
-			return errors.Errorf("Invalid bind address: %v", c.Bind)
-		}
-
-		cfg.IP = parts[0]
-		if parts[1] != "" {
-			cfg.Port, err = strconv.Atoi(parts[1])
-			if err != nil {
-				return errors.Wrapf(err, "Invalid bind address: %v", c.Bind)
-			}
+		ip, port, err = parseAddr(c.Bind)
+		if err != nil {
+			return err
 		}
 	}
 
-	cfg.InactivityTime = c.InactivityTime
-	cfg.InfoCallback = outputMessages(ctx)
+	s, err := fs_snapshot.NewSnapshoter(&fs_snapshot.SnapshoterConfig{
+		ConnectionType: fs_snapshot.LocalOnly,
+		InfoCallback:   ctx.console.NewInfoMessageCallback(),
+	})
+	defer s.Close()
+	if err != nil {
+		return err
+	}
 
-	err = fs_snapshot.StartServer(ctx.snapshoter, &cfg)
+	err = fs_snapshot.StartServer(s, &fs_snapshot.ServerConfig{
+		InactivityTime: c.InactivityTime,
+		InfoCallback:   ctx.console.NewInfoMessageCallback(),
+		IP:             ip,
+		Port:           port,
+	})
 	if err != nil {
 		return err
 	}

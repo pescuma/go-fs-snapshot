@@ -6,6 +6,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func newOSSnapshoter() (Snapshoter, error) {
+func newOSSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 	return nil, errors.New("snapshots not supported in this OS")
 }

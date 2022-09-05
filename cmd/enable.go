@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os/user"
 
 	"github.com/pescuma/go-fs-snapshot/lib"
@@ -16,7 +15,7 @@ func (c *enableForCurrentUserCmd) Run(ctx *context) error {
 		return err
 	}
 
-	return fs_snapshot.EnableSnapshotsForUser(u.Username, outputMessages(ctx))
+	return fs_snapshot.EnableSnapshotsForUser(u.Username, ctx.console.NewInfoMessageCallback())
 }
 
 type enableForUserCmd struct {
@@ -24,7 +23,7 @@ type enableForUserCmd struct {
 }
 
 func (c *enableForUserCmd) Run(ctx *context) error {
-	return fs_snapshot.EnableSnapshotsForUser(c.Username, outputMessages(ctx))
+	return fs_snapshot.EnableSnapshotsForUser(c.Username, ctx.console.NewInfoMessageCallback())
 }
 
 type enableTestCurrentUserCmd struct {
@@ -36,15 +35,15 @@ func (c *enableTestCurrentUserCmd) Run(ctx *context) error {
 		return err
 	}
 
-	can, err := fs_snapshot.CurrentUserCanCreateSnapshots(outputMessages(ctx))
+	can, err := fs_snapshot.CurrentUserCanCreateSnapshots(ctx.console.NewInfoMessageCallback())
 	if err != nil {
 		return err
 	}
 
 	if can {
-		fmt.Printf("Current user (%v) can create snapshots.\n", u.Username)
+		ctx.console.Printf("Current user (%v) can create snapshots.", u.Username)
 	} else {
-		fmt.Printf("Current user (%v) can NOT create snapshots.\n", u.Username)
+		ctx.console.Printf("Current user (%v) can NOT create snapshots.", u.Username)
 	}
 
 	return nil

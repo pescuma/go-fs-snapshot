@@ -1,13 +1,13 @@
 package cli
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/alexeyco/simpletable"
 )
 
 type listCmd struct {
+	ServerArgs serverArgs `embed:""`
 }
 
 func (c *listCmd) Run(ctx *context) error {
@@ -17,7 +17,7 @@ func (c *listCmd) Run(ctx *context) error {
 	}
 
 	if len(ps) == 0 {
-		fmt.Println("No snapshots exist.")
+		ctx.console.Print("No snapshots exist.")
 		return nil
 	}
 
@@ -75,7 +75,7 @@ func (c *listCmd) Run(ctx *context) error {
 		}
 	}
 
-	fmt.Println(table.String())
+	ctx.console.Print(table.String())
 
 	return nil
 }

@@ -1,39 +1,36 @@
 package cli
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
-	"github.com/pescuma/go-fs-snapshot/lib"
+	"github.com/pkg/errors"
 )
 
-func outputMessages(ctx *context) func(level fs_snapshot.MessageLevel, msg string) {
-	return func(level fs_snapshot.MessageLevel, msg string) {
-		switch level {
-		case fs_snapshot.OutputLevel:
-			fmt.Println(msg)
-			fmt.Println()
+func parseAddr(addr string) (string, int, error) {
+	ip := ""
+	port := 0
 
-		case fs_snapshot.InfoLevel:
-			if ctx.globals.Verbose >= 1 {
-				fmt.Println(msg)
-				fmt.Println()
-			}
+	if addr == "" {
+		return ip, port, nil
+	}
 
-		case fs_snapshot.DetailsLevel:
-			if ctx.globals.Verbose >= 2 {
-				fmt.Println(msg)
-				fmt.Println()
-			}
+	parts := strings.Split(addr, ":")
+	if len(parts) > 2 {
+		return "", 0, errors.Errorf("invalid address: %v", addr)
+	}
 
-		case fs_snapshot.TraceLevel:
-			if ctx.globals.Verbose >= 3 {
-				msgs := strings.Split(msg, "\n")
-				for _, m := range msgs {
-					fmt.Println("[TRACE] " + m)
-				}
-				fmt.Println()
-			}
+	if parts[0] != "" {
+		ip = parts[0]
+	}
+	if len(parts) == 2 && parts[1] != "" {
+		var err error
+
+		port, err = strconv.Atoi(parts[1])
+		if err != nil {
+			return "", 0, errors.Wrapf(err, "invalid address: %v", addr)
 		}
 	}
+
+	return ip, port, nil
 }

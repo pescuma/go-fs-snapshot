@@ -1,13 +1,13 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/pescuma/go-fs-snapshot/lib"
 )
 
 type setInfoCmd struct {
 	ID string `arg:"" help:"The ID (simplified or full) of the snapshot set."`
+
+	ServerArgs serverArgs `embed:""`
 }
 
 func (c *setInfoCmd) Run(ctx *context) error {
@@ -19,9 +19,9 @@ func (c *setInfoCmd) Run(ctx *context) error {
 		return nil
 	}
 
-	fmt.Printf("Snapshot Set info:\n")
-	printSetInfo(set, "   ")
-	fmt.Printf("\n")
+	ctx.console.Print("Snapshot Set info:")
+	printSetInfo(ctx, set, "   ")
+	ctx.console.Print("")
 
 	return nil
 }
@@ -34,24 +34,24 @@ func findOneSet(ctx *context, id string) (*fs_snapshot.SnapshotSet, error) {
 
 	switch len(sets) {
 	case 0:
-		fmt.Printf("No snapshot sets found with ID %v\n", id)
+		ctx.console.Printf("No snapshot sets found with ID %v", id)
 		return nil, nil
 	case 1:
 		return sets[0], nil
 	default:
-		fmt.Printf("Found %v snapshot sets with ID %v - please use full ID.\n", len(sets), id)
+		ctx.console.Printf("Found %v snapshot sets with ID %v - please use full ID.", len(sets), id)
 		return nil, nil
 	}
 }
 
-func printSetInfo(set *fs_snapshot.SnapshotSet, prefix string) {
-	fmt.Printf("%vID:                         %v\n", prefix, set.ID)
-	fmt.Printf("%vCreation:                   %v\n", prefix, set.CreationTime.Local().Format("2006-01-02 15:04:05 -07"))
-	fmt.Printf("%vSnapshot count:             %v\n", prefix, len(set.Snapshots))
-	fmt.Printf("%vSnapshot count on creation: %v\n", prefix, set.SnapshotCountOnCreation)
+func printSetInfo(ctx *context, set *fs_snapshot.SnapshotSet, prefix string) {
+	ctx.console.Printf("%vID:                         %v", prefix, set.ID)
+	ctx.console.Printf("%vCreation:                   %v", prefix, set.CreationTime.Local().Format("2006-01-02 15:04:05 -07"))
+	ctx.console.Printf("%vSnapshot count:             %v", prefix, len(set.Snapshots))
+	ctx.console.Printf("%vSnapshot count on creation: %v", prefix, set.SnapshotCountOnCreation)
 	for i, snapshot := range set.Snapshots {
-		fmt.Printf("\n")
-		fmt.Printf("%vSnapshot %v:\n", prefix, i+1)
-		printSnapshotInfo(snapshot, prefix+"   ")
+		ctx.console.Printf("")
+		ctx.console.Printf("%vSnapshot %v:", prefix, i+1)
+		printSnapshotInfo(ctx, snapshot, prefix+"   ")
 	}
 }

@@ -1,6 +1,9 @@
 package fs_snapshot
 
-import "time"
+import (
+	"os/exec"
+	"time"
+)
 
 type Snapshoter interface {
 	// ListProviders list all provider available
@@ -15,7 +18,7 @@ type Snapshoter interface {
 	// filterID: filter by id if != ""
 	ListSnapshots(filterID string) ([]*Snapshot, error)
 
-	// SimplifyId simplifies the snapshot, set and provider IDs, if possible
+	// SimplifyID simplifies the snapshot, set and provider IDs, if possible
 	SimplifyID(id string) string
 
 	// DeleteSet deletes one snapshot set and all its snapshots.
@@ -60,19 +63,23 @@ type Snapshot struct {
 	Attributes   string
 }
 
-type SnapshotOptions struct {
-	ProviderID string
-
-	Timeout time.Duration
-
-	// Simple - try to do it as simple as possible, but not simpler.
-	// In Windows this means do not use VSS Writers.
-	Simple bool
-
+type SnapshoterConfig struct {
 	InfoCallback InfoMessageCallback
+
+	ConnectionType ConnectionType
+	ServerIP       string
+	ServerPort     int
 }
 
-type InfoMessageCallback func(level MessageLevel, msg string)
+type ConnectionType int
+
+const (
+	LocalOrServer ConnectionType = iota
+	LocalOnly
+	ServerOnly
+)
+
+type InfoMessageCallback func(level MessageLevel, format string, a ...interface{})
 
 type MessageLevel int
 
@@ -83,13 +90,71 @@ const (
 	TraceLevel
 )
 
+type SnapshotOptions struct {
+	ProviderID string
+
+	Timeout time.Duration
+
+	// Simple - try to do it as simple as possible, but not simpler.
+	// In Windows this means do not use VSS Writers.
+	Simple bool
+}
+
 // NewSnapshoter creates a new snapshoter.
 // In case of error a null snapshoter is returned, so you can use it without problem.
-func NewSnapshoter() (Snapshoter, error) {
-	result, err := newOSSnapshoter()
-	if err != nil {
-		return newNullSnapshoter(), err
+func NewSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
+	if cfg == nil {
+		cfg = &SnapshoterConfig{}
+	}
+	if cfg.ServerIP == "" {
+		cfg.ServerIP = DefaultIP
+	}
+	if cfg.ServerPort == 0 {
+		cfg.ServerPort = DefaultPort
 	}
 
-	return result, nil
+	var result Snapshoter
+	var errLocal error
+	var errServer error
+
+	if cfg.ConnectionType != ServerOnly {
+		result, errLocal = newOSSnapshoter(cfg)
+		if errLocal == nil {
+			return result, nil
+		}
+	}
+
+	if cfg.ConnectionType != LocalOnly {
+		result, errServer = newClientSnapshoterStartingServer(cfg)
+		if errServer == nil {
+			return result, nil
+		}
+	}
+
+	if cfg.ConnectionType != ServerOnly {
+		return newNullSnapshoter(), errLocal
+	} else {
+		return newNullSnapshoter(), errServer
+	}
+}
+
+func newClientSnapshoterStartingServer(cfg *SnapshoterConfig) (Snapshoter, error) {
+	result, err := newClientSnapshoter(cfg)
+	if err == nil {
+		return result, nil
+	}
+
+	if cfg.ServerIP != DefaultIP && cfg.ServerPort != DefaultPort {
+		// Not the default config, so don't try to start the server
+		return nil, err
+	}
+
+	cmd := exec.Command("schtasks", "/Run", "/TN", "\\fs_snapshot\\server start", "/HRESULT")
+	_, err1 := cmd.Output()
+	if err1 != nil {
+		// Ignore error starting server and just return the connection error
+		return nil, err
+	}
+
+	return newClientSnapshoter(cfg)
 }

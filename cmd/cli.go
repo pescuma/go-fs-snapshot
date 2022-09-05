@@ -1,9 +1,7 @@
 package cli
 
 import (
-	"fmt"
-	"os"
-	"strings"
+	"reflect"
 
 	"github.com/alecthomas/kong"
 
@@ -14,31 +12,72 @@ func Execute() {
 	var cmds commands
 	ctx := kong.Parse(&cmds, kong.ShortUsageOnError())
 
-	var s fs_snapshot.Snapshoter
-	var err error
+	err := execute(ctx, &cmds.Globals, newConsole(cmds.Globals.Verbose))
 
-	if ctx.Path[1].Command.Name != "enable" {
-		s, err = fs_snapshot.NewSnapshoter()
+	ctx.FatalIfErrorf(err)
+}
+
+func execute(ctx *kong.Context, gs *globals, console *console) error {
+	var s fs_snapshot.Snapshoter
+
+	sa := getServerArgs(ctx)
+	if sa != nil {
+		ip, port, err := parseAddr(sa.Server)
+		if err != nil {
+			return err
+		}
+
+		ct := fs_snapshot.LocalOrServer
+		if sa.Server != "" && sa.ServerOnlyAsFallback {
+			ct = fs_snapshot.ServerOnly
+		}
+
+		s, err = fs_snapshot.NewSnapshoter(&fs_snapshot.SnapshoterConfig{
+			InfoCallback:   console.NewInfoMessageCallback(),
+			ConnectionType: ct,
+			ServerIP:       ip,
+			ServerPort:     port,
+		})
 		defer s.Close()
 
 		if err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
-			return
+			return err
 		}
 	}
 
-	err = ctx.Run(&context{
-		globals:    &cmds.Globals,
+	return ctx.Run(&context{
+		globals:    gs,
 		snapshoter: s,
+		console:    console,
 	})
+}
 
-	ctx.FatalIfErrorf(err)
+func getServerArgs(ctx *kong.Context) *serverArgs {
+	var cmd reflect.Value
+
+	for _, p := range ctx.Path {
+		if p.Command != nil {
+			cmd = p.Command.Target
+		}
+	}
+
+	if !cmd.IsValid() {
+		return nil
+	}
+
+	r := cmd.FieldByName("ServerArgs")
+	if !r.IsValid() {
+		return nil
+	}
+
+	sa := r.Interface().(serverArgs)
+	return &sa
 }
 
 type context struct {
 	globals    *globals
 	snapshoter fs_snapshot.Snapshoter
+	console    *console
 }
 
 type commands struct {
@@ -74,25 +113,4 @@ type commands struct {
 
 type globals struct {
 	Verbose int `short:"v" type:"counter" help:"Show more detailed information."`
-}
-
-func askForConfirmation(message string) bool {
-	fmt.Printf("%s [y/N] ", message)
-
-	var response string
-	_, err := fmt.Scanln(&response)
-	if err != nil {
-		return false
-	}
-
-	response = strings.ToLower(strings.TrimSpace(response))
-
-	if response == "y" || response == "yes" {
-		return true
-	} else if response == "" || response == "n" || response == "no" {
-		return false
-	} else {
-		fmt.Printf("Unknown answer, aborting")
-		return false
-	}
 }

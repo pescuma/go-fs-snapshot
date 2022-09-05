@@ -22,6 +22,8 @@ type backupCmd struct {
 	Simple     bool          `help:"Try to do it as simple as possible, but not simpler. In Windows this means do not use VSS Writers."`
 	Exec       string        `short:"e" help:"Command to execute after taking the snapshot. The snaphshot path(s) will be added to the end. If not set, this command waits for user input before deleting the snapshot(s)."`
 	NoShell    bool          `help:"Do not pass the exec command to the shell to execute."`
+
+	ServerArgs serverArgs `embed:""`
 }
 
 func (c *backupCmd) Run(ctx *context) error {
@@ -31,10 +33,9 @@ func (c *backupCmd) Run(ctx *context) error {
 	}
 
 	backuper, err := ctx.snapshoter.StartBackup(&fs_snapshot.SnapshotOptions{
-		ProviderID:   c.ProviderID,
-		Timeout:      c.Timeout,
-		Simple:       c.Simple,
-		InfoCallback: outputMessages(ctx),
+		ProviderID: c.ProviderID,
+		Timeout:    c.Timeout,
+		Simple:     c.Simple,
 	})
 	defer backuper.Close()
 	if err != nil {
@@ -47,33 +48,34 @@ func (c *backupCmd) Run(ctx *context) error {
 		snapshotPath, err := backuper.TryToCreateTemporarySnapshot(dir)
 		switch {
 		case err != nil:
-			fmt.Printf("%v: Error creating snapshot: %v\n", dir, err)
+			ctx.console.Printf("%v: Error creating snapshot: %v", dir, err)
 		case snapshotPath == dir:
-			fmt.Printf("%v: Snapshots not supported for this folder\n", dir)
+			ctx.console.Printf("%v: Snapshots not supported for this folder", dir)
 		default:
-			fmt.Printf("%v: Snapshot path is %v\n", dir, snapshotPath)
+			ctx.console.Printf("%v: Snapshot path is %v", dir, snapshotPath)
 		}
 
 		snapshotPaths = append(snapshotPaths, snapshotPath)
 	}
 
-	fmt.Printf("\n")
+	ctx.console.Print("")
 
 	if cmd != nil {
 		cmd.Args = append(cmd.Args, snapshotPaths...)
 
 		if ctx.globals.Verbose >= 1 {
-			fmt.Printf("Executing: '%v'\n", strings.Join(cmd.Args, "' '"))
-			fmt.Printf("\n")
+			ctx.console.Printf("Executing: '%v'", strings.Join(cmd.Args, "' '"))
+			ctx.console.Print("")
 		}
 
 		err = cmd.Run()
-		fmt.Printf("\n")
+
+		ctx.console.Print("")
 
 		return errors.Wrapf(err, "Error executing command")
 
 	} else {
-		fmt.Printf("Press <enter> to finish backup and delete snapshot(s)\n")
+		fmt.Print("Press <enter> to finish backup and delete snapshot(s)")
 
 		var response string
 		_, _ = fmt.Scanln(&response)

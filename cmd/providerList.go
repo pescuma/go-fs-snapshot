@@ -1,12 +1,11 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/alexeyco/simpletable"
 )
 
 type providerListCmd struct {
+	ServerArgs serverArgs `embed:""`
 }
 
 func (c *providerListCmd) Run(ctx *context) error {
@@ -43,7 +42,6 @@ func (c *providerListCmd) Run(ctx *context) error {
 		})
 	}
 
-	fmt.Println(table.String())
-
+	ctx.console.Print(table.String())
 	return nil
 }

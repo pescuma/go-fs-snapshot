@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 )
 
@@ -10,6 +8,8 @@ type deleteCmd struct {
 	ID    string `arg:"" help:"The ID (simplified or full) of the snapshot to delete."`
 	Force bool   `short:"f" help:"Do everything possible to try to delete."`
 	Yes   bool   `short:"y" help:"Do not prompt for deletion confirmation."`
+
+	ServerArgs serverArgs `embed:""`
 }
 
 func (c *deleteCmd) Run(ctx *context) error {
@@ -21,16 +21,16 @@ func (c *deleteCmd) Run(ctx *context) error {
 		return nil
 	}
 
-	fmt.Printf("Snapshot info:\n")
-	printSnapshotInfo(snapshot, "   ")
-	fmt.Printf("\n")
+	ctx.console.Print("Snapshot info:")
+	printSnapshotInfo(ctx, snapshot, "   ")
+	ctx.console.Print("")
 
 	if !c.Yes {
-		confirm := askForConfirmation("Are you sure you want to delete this snapshot?")
+		confirm := ctx.console.AskForConfirmation("Are you sure you want to delete this snapshot?")
 		if !confirm {
 			return nil
 		}
-		fmt.Printf("\n")
+		ctx.console.Print("")
 	}
 
 	deleted, err := ctx.snapshoter.DeleteSnapshot(snapshot.ID, c.Force)
@@ -41,6 +41,6 @@ func (c *deleteCmd) Run(ctx *context) error {
 		return errors.Errorf("Snapshot not found.")
 	}
 
-	fmt.Printf("Snapshot %v deleted.\n", snapshot.ID)
+	ctx.console.Printf("Snapshot %v deleted.", snapshot.ID)
 	return nil
 }

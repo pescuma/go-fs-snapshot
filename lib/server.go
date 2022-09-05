@@ -12,6 +12,7 @@ import (
 	"github.com/pescuma/go-fs-snapshot/lib/internal/rpc"
 )
 
+const DefaultIP = "localhost"
 const DefaultPort = 33721
 
 func StartServer(snapshoter Snapshoter, cfg *ServerConfig) error {
@@ -24,10 +25,13 @@ func StartServer(snapshoter Snapshoter, cfg *ServerConfig) error {
 
 	s := grpc.NewServer()
 	rpc.RegisterFsSnapshotServer(s, &server{
-		snapshoter: snapshoter,
+		snapshoter:   snapshoter,
+		infoCallback: cfg.InfoCallback,
 	})
 
-	cfg.InfoCallback(OutputLevel, fmt.Sprintf("server listening at %v", lis.Addr()))
+	if cfg.InfoCallback != nil {
+		cfg.InfoCallback(OutputLevel, fmt.Sprintf("server listening at %v", lis.Addr()))
+	}
 
 	if err = s.Serve(lis); err != nil {
 		return err
@@ -44,11 +48,11 @@ type ServerConfig struct {
 }
 
 func (cfg *ServerConfig) SetDefaults() {
+	if cfg.IP == "" {
+		cfg.IP = DefaultIP
+	}
 	if cfg.Port == 0 {
 		cfg.Port = DefaultPort
-	}
-	if cfg.InfoCallback == nil {
-		cfg.InfoCallback = func(MessageLevel, string) {}
 	}
 }
 
@@ -59,10 +63,15 @@ func (cfg *ServerConfig) Address() string {
 type server struct {
 	rpc.UnimplementedFsSnapshotServer
 
-	snapshoter Snapshoter
+	snapshoter   Snapshoter
+	infoCallback InfoMessageCallback
 }
 
 func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRequest) (*rpc.ListProvidersReply, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.ListProviders(\"%v\")", request.FilterId))
+	}
+
 	providers, err := s.snapshoter.ListProviders(request.FilterId)
 	if err != nil {
 		return nil, err
@@ -79,6 +88,10 @@ func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRe
 }
 
 func (s *server) ListSets(ctx context.Context, request *rpc.ListSetsRequest) (*rpc.ListSetsReply, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.ListSets(\"%v\")", request.FilterId))
+	}
+
 	sets, err := s.snapshoter.ListSets(request.FilterId)
 	if err != nil {
 		return nil, err
@@ -95,6 +108,10 @@ func (s *server) ListSets(ctx context.Context, request *rpc.ListSetsRequest) (*r
 }
 
 func (s *server) ListSnapshots(ctx context.Context, request *rpc.ListSnapshotsRequest) (*rpc.ListSnapshotsReply, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.ListSnapshots(\"%v\")", request.FilterId))
+	}
+
 	snaps, err := s.snapshoter.ListSnapshots(request.FilterId)
 	if err != nil {
 		return nil, err
@@ -111,6 +128,10 @@ func (s *server) ListSnapshots(ctx context.Context, request *rpc.ListSnapshotsRe
 }
 
 func (s *server) SimplifyId(ctx context.Context, request *rpc.SimplifyIdRequest) (*rpc.SimplifyIdReply, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.SimplifyID(\"%v\")", request.Id))
+	}
+
 	simpleId := s.snapshoter.SimplifyID(request.Id)
 
 	return &rpc.SimplifyIdReply{
@@ -119,6 +140,10 @@ func (s *server) SimplifyId(ctx context.Context, request *rpc.SimplifyIdRequest)
 }
 
 func (s *server) DeleteSet(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.DeleteSet(\"%v\", %v)", request.Id, request.Force))
+	}
+
 	deleted, err := s.snapshoter.DeleteSet(request.Id, request.Force)
 	if err != nil {
 		return nil, err
@@ -130,6 +155,10 @@ func (s *server) DeleteSet(ctx context.Context, request *rpc.DeleteRequest) (*rp
 }
 
 func (s *server) DeleteSnapshot(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
+	if s.infoCallback != nil {
+		s.infoCallback(TraceLevel, fmt.Sprintf("Received request: Snapshoter.DeleteSnapshot(\"%v\", %v)", request.Id, request.Force))
+	}
+
 	deleted, err := s.snapshoter.DeleteSnapshot(request.Id, request.Force)
 	if err != nil {
 		return nil, err

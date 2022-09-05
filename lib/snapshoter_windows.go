@@ -18,7 +18,7 @@ import (
 
 const simpleIdLength = 7
 
-func newOSSnapshoter() (Snapshoter, error) {
+func newOSSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 	err := initializePrivileges()
 	if err != nil {
 		return nil, errors.New("the caller does not have sufficient backup privileges or is not an administrator")
@@ -45,10 +45,13 @@ func newOSSnapshoter() (Snapshoter, error) {
 		return nil, err
 	}
 
-	return &windowsSnapshoter{}, nil
+	return &windowsSnapshoter{
+		infoCallback: cfg.InfoCallback,
+	}, nil
 }
 
 type windowsSnapshoter struct {
+	infoCallback InfoMessageCallback
 }
 
 func (s *windowsSnapshoter) SimplifyID(id string) string {
@@ -340,12 +343,12 @@ func (s *windowsSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error)
 			Timeout:    opts.Timeout,
 			Writters:   !opts.Simple,
 			InfoCallback: func(level internal_windows.MessageLevel, msg string) {
-				if opts.InfoCallback != nil {
-					opts.InfoCallback(MessageLevel(level), msg)
+				if s.infoCallback != nil {
+					s.infoCallback(MessageLevel(level), msg)
 				}
 			},
 		},
-		infoCallback: opts.InfoCallback,
+		infoCallback: s.infoCallback,
 		volumes:      make(map[string]*volumeInfo),
 	}, nil
 }

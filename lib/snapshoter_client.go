@@ -2,7 +2,7 @@ package fs_snapshot
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -11,26 +11,35 @@ import (
 	"github.com/pescuma/go-fs-snapshot/lib/internal/rpc"
 )
 
-func newClientSnapshoter(addr string) (Snapshoter, error) {
+func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 	var err error
-	result := &clientSnapshoter{}
+	result := &clientSnapshoter{
+		infoCallback: cfg.InfoCallback,
+	}
+
+	addr := fmt.Sprintf("%v:%v", cfg.ServerIP, cfg.ServerPort)
 
 	result.conn, err = grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not connect to server: %v", addr)
 	}
 
+	if cfg.InfoCallback != nil {
+		cfg.InfoCallback(DetailsLevel, fmt.Sprintf("Connected with server at %v", addr))
+	}
+
 	result.client = rpc.NewFsSnapshotClient(result.conn)
-	result.ctx, result.cancel = context.WithTimeout(context.Background(), time.Second)
+	result.ctx, result.cancel = context.WithCancel(context.Background())
 
 	return result, nil
 }
 
 type clientSnapshoter struct {
-	conn   *grpc.ClientConn
-	client rpc.FsSnapshotClient
-	ctx    context.Context
-	cancel context.CancelFunc
+	conn         *grpc.ClientConn
+	client       rpc.FsSnapshotClient
+	ctx          context.Context
+	cancel       context.CancelFunc
+	infoCallback InfoMessageCallback
 }
 
 func (s *clientSnapshoter) ListProviders(filterID string) ([]*Provider, error) {

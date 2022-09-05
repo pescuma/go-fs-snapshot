@@ -8,6 +8,7 @@ import (
 )
 
 type setListCmd struct {
+	ServerArgs serverArgs `embed:""`
 }
 
 func (c *setListCmd) Run(ctx *context) error {
@@ -17,7 +18,7 @@ func (c *setListCmd) Run(ctx *context) error {
 	}
 
 	if len(ps) == 0 {
-		fmt.Println("No snapshot sets exist.")
+		ctx.console.Print("No snapshot sets exist.")
 		return nil
 	}
 
@@ -61,7 +62,6 @@ func (c *setListCmd) Run(ctx *context) error {
 		}
 	}
 
-	fmt.Println(table.String())
-
+	ctx.console.Print(table.String())
 	return nil
 }
