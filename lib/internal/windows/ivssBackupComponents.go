@@ -34,7 +34,7 @@ func NewIVSSBackupComponents() (*IVSSBackupComponents, error) {
 		if oleIUnknown != nil {
 			oleIUnknown.Release()
 		}
-		return nil, newVssError(hresult, "the caller does not have sufficient backup privileges or is not an administrator")
+		return nil, newVssError(hresult, "the current user does not have sufficient backup privileges or is not an administrator")
 	default:
 		if oleIUnknown != nil {
 			oleIUnknown.Release()

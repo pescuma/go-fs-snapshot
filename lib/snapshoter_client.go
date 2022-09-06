@@ -3,6 +3,7 @@ package fs_snapshot
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -20,7 +21,12 @@ func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 
 	addr := fmt.Sprintf("%v:%v", cfg.ServerIP, cfg.ServerPort)
 
-	result.conn, err = grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	connCtx, _ := context.WithTimeout(context.Background(), time.Second)
+
+	result.conn, err = grpc.DialContext(connCtx, addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not connect to server: %v", addr)
 	}

@@ -36,7 +36,7 @@ func startServerForOS(infoCb InfoMessageCallback) error {
 func newSnapshoterForOS(cfg *SnapshoterConfig) (Snapshoter, error) {
 	err := initializePrivileges()
 	if err != nil {
-		return nil, errors.New("the caller does not have sufficient backup privileges or is not an administrator")
+		return nil, errors.New("the current user does not have sufficient backup privileges or is not an administrator")
 	}
 
 	is64Bit, err := internal_windows.IsRunningOn64BitWindows()

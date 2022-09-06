@@ -27,8 +27,10 @@ func StartServer(snapshoter Snapshoter, cfg *ServerConfig) error {
 	}
 
 	s := grpc.NewServer()
+
 	rpc.RegisterFsSnapshotServer(s, &server{
 		snapshoter:   snapshoter,
+		activityChan: handleInactivity(s, cfg),
 		infoCallback: cfg.InfoCallback,
 	})
 
@@ -42,15 +44,24 @@ func StartServer(snapshoter Snapshoter, cfg *ServerConfig) error {
 }
 
 type ServerConfig struct {
-	IP             string
-	Port           int
+	// IP to listen on. Use "0.0.0.0" to listen on all interfaces. Default is "localhost".
+	IP string
+
+	// Port to listen on.
+	Port int
+
+	// InactivityTime to stop the server, if this is > 0.
 	InactivityTime time.Duration
-	InfoCallback   InfoMessageCallback
+
+	InfoCallback InfoMessageCallback
 }
 
 func (cfg *ServerConfig) setDefaults() {
 	if cfg.IP == "" {
 		cfg.IP = DefaultIP
+	}
+	if cfg.IP == "0.0.0.0" {
+		cfg.IP = ""
 	}
 	if cfg.Port == 0 {
 		cfg.Port = DefaultPort
@@ -68,11 +79,21 @@ type server struct {
 	rpc.UnimplementedFsSnapshotServer
 
 	snapshoter   Snapshoter
+	activityChan chan activity
 	infoCallback InfoMessageCallback
 }
 
+func (s *server) sendActivity(a activity) {
+	if s.activityChan != nil {
+		s.activityChan <- a
+	}
+}
+
 func (s *server) CanCreateSnapshots(ctx context.Context, request *rpc.CanCreateSnapshotsRequest) (*rpc.CanCreateSnapshotsReply, error) {
-	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.CanCreateSnapshots()")
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: CanCreateSnapshots()")
 
 	// If the server has started it can create snapshots, at least for now
 	reply := rpc.CanCreateSnapshotsReply{
@@ -83,7 +104,10 @@ func (s *server) CanCreateSnapshots(ctx context.Context, request *rpc.CanCreateS
 }
 
 func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRequest) (*rpc.ListProvidersReply, error) {
-	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.ListProviders(\"%v\")", request.FilterId)
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: ListProviders(\"%v\")", request.FilterId)
 
 	providers, err := s.snapshoter.ListProviders(request.FilterId)
 	if err != nil {
@@ -101,7 +125,10 @@ func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRe
 }
 
 func (s *server) ListSets(ctx context.Context, request *rpc.ListSetsRequest) (*rpc.ListSetsReply, error) {
-	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.ListSets(\"%v\")", request.FilterId)
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: ListSets(\"%v\")", request.FilterId)
 
 	sets, err := s.snapshoter.ListSets(request.FilterId)
 	if err != nil {
@@ -119,7 +146,10 @@ func (s *server) ListSets(ctx context.Context, request *rpc.ListSetsRequest) (*r
 }
 
 func (s *server) ListSnapshots(ctx context.Context, request *rpc.ListSnapshotsRequest) (*rpc.ListSnapshotsReply, error) {
-	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.ListSnapshots(\"%v\")", request.FilterId)
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: ListSnapshots(\"%v\")", request.FilterId)
 
 	snaps, err := s.snapshoter.ListSnapshots(request.FilterId)
 	if err != nil {
@@ -137,7 +167,10 @@ func (s *server) ListSnapshots(ctx context.Context, request *rpc.ListSnapshotsRe
 }
 
 func (s *server) SimplifyId(ctx context.Context, request *rpc.SimplifyIdRequest) (*rpc.SimplifyIdReply, error) {
-	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.SimplifyID(\"%v\")", request.Id)
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: SimplifyID(\"%v\")", request.Id)
 
 	simpleId := s.snapshoter.SimplifyID(request.Id)
 
@@ -147,7 +180,10 @@ func (s *server) SimplifyId(ctx context.Context, request *rpc.SimplifyIdRequest)
 }
 
 func (s *server) DeleteSet(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
-	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.DeleteSet(\"%v\", %v)", request.Id, request.Force)
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: DeleteSet(\"%v\", %v)", request.Id, request.Force)
 
 	deleted, err := s.snapshoter.DeleteSet(request.Id, request.Force)
 	if err != nil {
@@ -160,7 +196,10 @@ func (s *server) DeleteSet(ctx context.Context, request *rpc.DeleteRequest) (*rp
 }
 
 func (s *server) DeleteSnapshot(ctx context.Context, request *rpc.DeleteRequest) (*rpc.DeleteReply, error) {
-	s.infoCallback(TraceLevel, "GRPC Received request: Snapshoter.DeleteSnapshot(\"%v\", %v)", request.Id, request.Force)
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: DeleteSnapshot(\"%v\", %v)", request.Id, request.Force)
 
 	deleted, err := s.snapshoter.DeleteSnapshot(request.Id, request.Force)
 	if err != nil {
@@ -173,16 +212,29 @@ func (s *server) DeleteSnapshot(ctx context.Context, request *rpc.DeleteRequest)
 }
 
 func (s *server) StartBackup(request *rpc.StartBackupRequest, backupServer rpc.FsSnapshot_StartBackupServer) error {
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.sendActivity(backupStart)
+
 	//TODO implement me
 	panic("implement me")
 }
 
 func (s *server) TryToCreateTemporarySnapshot(request *rpc.TryToCreateTemporarySnapshotRequest, snapshotServer rpc.FsSnapshot_TryToCreateTemporarySnapshotServer) error {
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
 	//TODO implement me
 	panic("implement me")
 }
 
 func (s *server) CloseBackup(request *rpc.CloseBackupRequest, backupServer rpc.FsSnapshot_CloseBackupServer) error {
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.sendActivity(backupEnd)
+
 	//TODO implement me
 	panic("implement me")
 }
@@ -268,4 +320,85 @@ func convertSnapshotToLocal(snap *rpc.Snapshot, set *SnapshotSet) *Snapshot {
 		State:        snap.State,
 		Attributes:   snap.Attributes,
 	}
+}
+
+type activity int
+
+const (
+	inactive activity = iota
+	noMessage
+	commandStart
+	commandEnd
+	backupStart
+	backupEnd
+)
+
+func handleInactivity(s *grpc.Server, cfg *ServerConfig) chan activity {
+	if cfg.InactivityTime <= 0 {
+		return nil
+	}
+
+	c := make(chan activity, 100)
+
+	selectInstant := func() activity {
+		select {
+		case a := <-c:
+			return a
+		case <-time.After(time.Second): // Batch a few messages to avoid too much output
+			return noMessage
+		}
+	}
+
+	selectForever := func() activity {
+		return <-c
+	}
+
+	selectWithTimeout := func() activity {
+		select {
+		case a := <-c:
+			return a
+		case <-time.After(cfg.InactivityTime):
+			return inactive
+		}
+	}
+
+	cmds := 0
+	backups := 0
+
+	go func() {
+		for {
+			a := selectInstant()
+
+			if a == noMessage {
+				if cmds == 0 && backups == 0 {
+					cfg.InfoCallback(TraceLevel, "Starting to count inactivity period of %v", cfg.InactivityTime)
+					a = selectWithTimeout()
+
+				} else {
+					cfg.InfoCallback(TraceLevel, "Waiting for activity to end: %v commands and %v backups executing",
+						cmds, backups)
+					a = selectForever()
+				}
+			}
+
+			switch a {
+			case inactive:
+				cfg.InfoCallback(OutputLevel, "fs_snapshot server stopping after %v inactive", cfg.InactivityTime)
+				s.GracefulStop()
+				return
+
+			case commandStart:
+				cmds++
+			case commandEnd:
+				cmds--
+
+			case backupStart:
+				backups++
+			case backupEnd:
+				backups--
+			}
+		}
+	}()
+
+	return c
 }

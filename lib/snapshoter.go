@@ -145,11 +145,10 @@ func newClientSnapshoterStartingServer(cfg *SnapshoterConfig) (Snapshoter, error
 }
 
 type SnapshoterConfig struct {
-	InfoCallback InfoMessageCallback
-
 	ConnectionType ConnectionType
 	ServerIP       string
 	ServerPort     int
+	InfoCallback   InfoMessageCallback
 }
 
 func (cfg *SnapshoterConfig) setDefaults() {

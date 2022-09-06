@@ -33,7 +33,7 @@ func InitializeCOM() error {
 	if err := ole.CoInitializeEx(0, ole.COINIT_MULTITHREADED); err != nil {
 		// CoInitializeEx returns 1 if COM is already initialized
 		if oleErr, ok := err.(*ole.OleError); !ok || oleErr.Code() != 1 {
-			return errors.New("Failed to initialize COM")
+			return errors.New("failed to initialize COM")
 		}
 	}
 
@@ -53,7 +53,7 @@ func InitializeCOM() error {
 	)
 	hr := HRESULT(hri)
 	if hr != S_OK {
-		return errors.Errorf("Failed to initialize COM security (%v)", hr)
+		return errors.Errorf("failed to initialize COM security (%v)", hr)
 	}
 
 	return nil
