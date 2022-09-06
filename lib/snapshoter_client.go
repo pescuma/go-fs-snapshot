@@ -21,9 +21,10 @@ func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 
 	addr := fmt.Sprintf("%v:%v", cfg.ServerIP, cfg.ServerPort)
 
-	connCtx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
-	result.conn, err = grpc.DialContext(connCtx, addr,
+	result.conn, err = grpc.DialContext(ctx, addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
 	)
@@ -34,7 +35,6 @@ func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 	cfg.InfoCallback(DetailsLevel, "Connected to server at: %v", addr)
 
 	result.client = rpc.NewFsSnapshotClient(result.conn)
-	result.ctx, result.cancel = context.WithCancel(context.Background())
 
 	return result, nil
 }
@@ -42,15 +42,16 @@ func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 type clientSnapshoter struct {
 	conn         *grpc.ClientConn
 	client       rpc.FsSnapshotClient
-	ctx          context.Context
-	cancel       context.CancelFunc
 	infoCallback InfoMessageCallback
 }
 
 func (s *clientSnapshoter) ListProviders(filterID string) ([]*Provider, error) {
 	s.infoCallback(TraceLevel, "GRPC Sending server request: ListProviders(\"%v\")", filterID)
 
-	reply, err := s.client.ListProviders(s.ctx, &rpc.ListProvidersRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	reply, err := s.client.ListProviders(ctx, &rpc.ListProvidersRequest{
 		FilterId: filterID,
 	})
 	if err != nil {
@@ -69,7 +70,10 @@ func (s *clientSnapshoter) ListProviders(filterID string) ([]*Provider, error) {
 func (s *clientSnapshoter) ListSets(filterID string) ([]*SnapshotSet, error) {
 	s.infoCallback(TraceLevel, "GRPC Sending server request: ListSets(\"%v\")", filterID)
 
-	reply, err := s.client.ListSets(s.ctx, &rpc.ListSetsRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	reply, err := s.client.ListSets(ctx, &rpc.ListSetsRequest{
 		FilterId: filterID,
 	})
 	if err != nil {
@@ -88,7 +92,10 @@ func (s *clientSnapshoter) ListSets(filterID string) ([]*SnapshotSet, error) {
 func (s *clientSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 	s.infoCallback(TraceLevel, "GRPC Sending server request: ListSnapshots(\"%v\")", filterID)
 
-	reply, err := s.client.ListSnapshots(s.ctx, &rpc.ListSnapshotsRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	reply, err := s.client.ListSnapshots(ctx, &rpc.ListSnapshotsRequest{
 		FilterId: filterID,
 	})
 	if err != nil {
@@ -117,7 +124,10 @@ func (s *clientSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 func (s *clientSnapshoter) SimplifyID(id string) string {
 	s.infoCallback(TraceLevel, "GRPC Sending server request: SimplifyId(\"%v\")", id)
 
-	reply, err := s.client.SimplifyId(s.ctx, &rpc.SimplifyIdRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	reply, err := s.client.SimplifyId(ctx, &rpc.SimplifyIdRequest{
 		Id: id,
 	})
 	if err != nil {
@@ -131,7 +141,10 @@ func (s *clientSnapshoter) SimplifyID(id string) string {
 func (s *clientSnapshoter) DeleteSet(id string, force bool) (bool, error) {
 	s.infoCallback(TraceLevel, "GRPC Sending server request: DeleteSet(\"%v\", %v)", id, force)
 
-	reply, err := s.client.DeleteSet(s.ctx, &rpc.DeleteRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	reply, err := s.client.DeleteSet(ctx, &rpc.DeleteRequest{
 		Id:    id,
 		Force: force,
 	})
@@ -146,7 +159,10 @@ func (s *clientSnapshoter) DeleteSet(id string, force bool) (bool, error) {
 func (s *clientSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
 	s.infoCallback(TraceLevel, "GRPC Sending server request: DeleteSnapshot(\"%v\", %v)", id, force)
 
-	reply, err := s.client.DeleteSnapshot(s.ctx, &rpc.DeleteRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	reply, err := s.client.DeleteSnapshot(ctx, &rpc.DeleteRequest{
 		Id:    id,
 		Force: force,
 	})
@@ -164,6 +180,5 @@ func (s *clientSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error) 
 }
 
 func (s *clientSnapshoter) Close() {
-	s.cancel()
 	_ = s.conn.Close()
 }

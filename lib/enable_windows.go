@@ -85,7 +85,14 @@ func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (bool, error) {
 
 func testServerCanCreateSnapshots(addr string, infoCb InfoMessageCallback) (bool, error) {
 	infoCb(TraceLevel, "GRPC Connecting to server at: %v", addr)
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
 	if err != nil {
 		infoCb(TraceLevel, "GRPC error: %v", err.Error())
 		return false, err
@@ -93,10 +100,12 @@ func testServerCanCreateSnapshots(addr string, infoCb InfoMessageCallback) (bool
 	defer conn.Close()
 
 	client := rpc.NewFsSnapshotClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
 
 	infoCb(TraceLevel, "GRPC Sending server request: CanCreateSnapshots()")
+
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	reply, err := client.CanCreateSnapshots(ctx, &rpc.CanCreateSnapshotsRequest{})
 	if err != nil {
 		infoCb(TraceLevel, "GRPC error: %v", err.Error())
