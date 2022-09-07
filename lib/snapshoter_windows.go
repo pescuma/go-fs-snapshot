@@ -4,7 +4,7 @@ package fs_snapshot
 
 import (
 	"os"
-	"os/exec"
+	"os/user"
 	"runtime"
 	"sort"
 	"strings"
@@ -20,13 +20,16 @@ import (
 const simpleIdLength = 7
 
 func startServerForOS(infoCb InfoMessageCallback) error {
-	infoCb(TraceLevel, "Running: schtasks /Run /TN \"\\fs_snapshot\\server start\" /HRESULT")
-
-	cmd := exec.Command("schtasks", "/Run", "/TN", "\\fs_snapshot\\server start", "/HRESULT")
-	_, err := cmd.Output()
-
+	u, err := user.Current()
 	if err != nil {
-		infoCb(TraceLevel, "Error running schtasks: %v", err.Error())
+		return err
+	}
+
+	err = run(infoCb, "schtasks", "/Run",
+		"/TN", createScheduledTaskName(u.Username),
+		"/HRESULT")
+	if err != nil {
+		infoCb(TraceLevel, "error running scheduled task: %v", err.Error())
 		return err
 	}
 
@@ -36,7 +39,7 @@ func startServerForOS(infoCb InfoMessageCallback) error {
 func newSnapshoterForOS(cfg *SnapshoterConfig) (Snapshoter, error) {
 	err := initializePrivileges()
 	if err != nil {
-		return nil, errors.New("the current user does not have sufficient backup privileges or is not an administrator")
+		return nil, err
 	}
 
 	is64Bit, err := internal_windows.IsRunningOn64BitWindows()

@@ -5,6 +5,8 @@ package fs_snapshot
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/user"
 	"sort"
 	"strings"
 	"time"
@@ -20,6 +22,7 @@ import (
 )
 
 const backupPrivilege = "SeBackupPrivilege"
+const batchLogonPrivilege = "SeBatchLogonRight"
 
 // CurrentUserCanCreateSnapshots returns information if the current user can create snapshots
 func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (bool, error) {
@@ -122,6 +125,13 @@ func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
 		infoCb = func(level MessageLevel, format string, a ...interface{}) {}
 	}
 
+	u, err := user.Lookup(username)
+	if err != nil {
+		return err
+	}
+
+	username = u.Username
+
 	policy, err := gowin32.OpenLocalSecurityPolicy()
 	if err != nil {
 		return err
@@ -145,22 +155,46 @@ func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
 
 	infoCb(DetailsLevel, "User %v has %v", username, rightsAsSring(rights))
 
+	err = grantPrivilege(policy, username, sid, backupPrivilege, rights, infoCb)
+	if err != nil {
+		return err
+	}
+
+	infoCb(OutputLevel, "")
+	err = grantPrivilege(policy, username, sid, batchLogonPrivilege, rights, infoCb)
+	if err != nil {
+		return err
+	}
+
+	infoCb(OutputLevel, "")
+	infoCb(OutputLevel, "Creating scheduled task \"%v\"", createScheduledTaskName(username))
+	err = createScheduledTask(username, infoCb)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func grantPrivilege(policy *gowin32.SecurityPolicy, username string, sid gowin32.SecurityID,
+	toGrant gowin32.AccountRightName, rights []gowin32.AccountRightName, infoCb InfoMessageCallback) error {
+
 	has := false
 	for _, right := range rights {
-		if right == backupPrivilege {
+		if right == toGrant {
 			has = true
 		}
 	}
 
 	if !has {
-		infoCb(OutputLevel, "Granting %v to user %v", backupPrivilege, username)
+		infoCb(OutputLevel, "Granting %v to user %v", toGrant, username)
 
-		err = policy.AddAccountRight(sid, backupPrivilege)
+		err := policy.AddAccountRight(sid, toGrant)
 		if err != nil {
 			return err
 		}
 
-		rights, err = policy.GetAccountRights(sid)
+		rights, err := policy.GetAccountRights(sid)
 		if err != nil && err != windows.ERROR_NDIS_FILE_NOT_FOUND { // https://stackoverflow.com/a/4615926
 			return err
 		}
@@ -168,10 +202,90 @@ func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
 		infoCb(InfoLevel, "User %v now has %v", username, rightsAsSring(rights))
 
 	} else {
-		infoCb(OutputLevel, "User %v already has %v", username, backupPrivilege)
+		infoCb(OutputLevel, "User %v already has %v", username, toGrant)
 	}
 
 	return nil
+}
+
+func createScheduledTask(username string, infoCb InfoMessageCallback) error {
+	f, err := createScheduledTaskXML()
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f)
+
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
+
+	runMode := runInline
+	if u.Username == username {
+		runMode = run
+	}
+
+	err = runMode(infoCb, "schtasks", "/Create",
+		"/TN", createScheduledTaskName(username),
+		"/RU", username,
+		"/NP",
+		"/XML", f,
+		"/F",
+		"/HRESULT")
+	if err != nil {
+		return errors.Wrap(err, "error creating scheduled task")
+	}
+
+	return nil
+}
+
+func createScheduledTaskXML() (string, error) {
+	f, err := os.CreateTemp("", "fs_snapshot-task-*.xml")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	data := []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Triggers />
+  <Principals>
+    <Principal id="Author">
+      <LogonType>S4U</LogonType>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>false</AllowHardTerminate>
+    <StartWhenAvailable>false</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>%v</Command>
+      <Arguments>server start --inactivity-time=5m</Arguments>
+    </Exec>
+  </Actions>
+</Task>`, os.Args[0]))
+	if _, err = f.Write(data); err != nil {
+		return "", err
+	}
+
+	return f.Name(), nil
 }
 
 func privilegesAsSring(privileges []wintoken.Privilege) string {
@@ -232,7 +346,7 @@ func initializePrivileges() error {
 	}
 
 	if !has {
-		return errors.New("current user does not have backup privileges")
+		return errors.New("the current user does not have sufficient backup privileges or is not an administrator")
 	}
 
 	err = token.EnableTokenPrivilege(backupPrivilege)

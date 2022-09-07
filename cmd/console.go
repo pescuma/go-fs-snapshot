@@ -10,7 +10,8 @@ import (
 type console struct {
 	verbosity int
 
-	lastLevel fs_snapshot.MessageLevel
+	lastLevel             fs_snapshot.MessageLevel
+	lastLineWasSeparation bool
 }
 
 func newConsole(verbosity int) *console {
@@ -45,6 +46,10 @@ func (c *console) Printlf(level fs_snapshot.MessageLevel, format string, a ...in
 func (c *console) Printl(level fs_snapshot.MessageLevel, msg string) {
 	c.printLevelSeparation(level)
 
+	if c.lastLineWasSeparation && msg == "" {
+		return
+	}
+
 	switch level {
 	case fs_snapshot.OutputLevel:
 		fmt.Println(msg)
@@ -61,12 +66,16 @@ func (c *console) Printl(level fs_snapshot.MessageLevel, msg string) {
 			fmt.Println("[TRACE] " + m)
 		}
 	}
+
+	c.lastLineWasSeparation = false
 }
 
 func (c *console) AskForConfirmation(message string) bool {
 	c.printLevelSeparation(fs_snapshot.OutputLevel)
 
 	fmt.Printf("%s [y/N] ", message)
+
+	c.lastLineWasSeparation = false
 
 	var response string
 	_, err := fmt.Scanln(&response)
@@ -87,8 +96,9 @@ func (c *console) AskForConfirmation(message string) bool {
 }
 
 func (c *console) printLevelSeparation(level fs_snapshot.MessageLevel) {
-	if c.lastLevel != -1 && c.lastLevel != level {
+	if c.lastLevel != -1 && c.lastLevel != level && !c.lastLineWasSeparation {
 		fmt.Println()
+		c.lastLineWasSeparation = true
 	}
 	c.lastLevel = level
 }
