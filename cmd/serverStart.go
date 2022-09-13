@@ -9,6 +9,7 @@ import (
 type serverStartCmd struct {
 	Bind           string        `help:"Address to bind, in the format ip:port. Both can be empty, but the : must be there."`
 	InactivityTime time.Duration `help:"After how long without a request should the server shut down. Default is never."`
+	Force          bool          `short:"f" help:"Start the server even if it's not supported in this OS. For tests.'"`
 }
 
 func (c *serverStartCmd) Run(ctx *context) error {
@@ -29,7 +30,11 @@ func (c *serverStartCmd) Run(ctx *context) error {
 	})
 	defer s.Close()
 	if err != nil {
-		return err
+		if !c.Force {
+			return err
+		} else {
+			ctx.console.Printf("Error: %v. Starting no-op server anyway.", err)
+		}
 	}
 
 	err = fs_snapshot.StartServer(s, &fs_snapshot.ServerConfig{

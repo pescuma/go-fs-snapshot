@@ -3,29 +3,21 @@
 package fs_snapshot
 
 import (
-	"context"
 	"fmt"
-	"os"
-	"os/user"
-	"sort"
-	"strings"
-	"time"
-
 	"github.com/fourcorelabs/wintoken"
 	"github.com/pkg/errors"
 	"github.com/winlabs/gowin32"
 	"golang.org/x/sys/windows"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/pescuma/go-fs-snapshot/lib/internal/rpc"
+	"os"
+	"os/user"
+	"sort"
+	"strings"
 )
 
 const backupPrivilege = "SeBackupPrivilege"
 const batchLogonPrivilege = "SeBatchLogonRight"
 
-// CurrentUserCanCreateSnapshots returns information if the current user can create snapshots
-func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (bool, error) {
+func currentUserCanCreateSnapshotsForOS(infoCb InfoMessageCallback) (bool, error) {
 	if infoCb == nil {
 		infoCb = func(level MessageLevel, format string, a ...interface{}) {}
 	}
@@ -59,66 +51,10 @@ func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (bool, error) {
 		}
 	}
 
-	if has {
-		return true, nil
-	}
-
-	addr := fmt.Sprintf("%v:%v", DefaultIP, DefaultPort)
-
-	infoCb(InfoLevel, "")
-	infoCb(InfoLevel, "Trying to open connection to server at: %v", addr)
-
-	can, err := testServerCanCreateSnapshots(addr, infoCb)
-	if err == nil {
-		return can, nil
-	}
-
-	err = startServerForOS(infoCb)
-	if err != nil {
-		return false, nil
-	}
-
-	can, err = testServerCanCreateSnapshots(addr, infoCb)
-	if err != nil {
-		return false, nil
-	}
-
-	return can, nil
+	return has, nil
 }
 
-func testServerCanCreateSnapshots(addr string, infoCb InfoMessageCallback) (bool, error) {
-	infoCb(TraceLevel, "GRPC Connecting to server at: %v", addr)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, addr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
-	)
-	if err != nil {
-		infoCb(TraceLevel, "GRPC error: %v", err.Error())
-		return false, err
-	}
-	defer conn.Close()
-
-	client := rpc.NewFsSnapshotClient(conn)
-
-	infoCb(TraceLevel, "GRPC Sending server request: CanCreateSnapshots()")
-
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	reply, err := client.CanCreateSnapshots(ctx, &rpc.CanCreateSnapshotsRequest{})
-	if err != nil {
-		infoCb(TraceLevel, "GRPC error: %v", err.Error())
-		return false, err
-	}
-
-	return reply.Can, nil
-}
-
-// EnableSnapshotsForUser enables the current user to run snaphsots.
+// EnableSnapshotsForUser enables the current user to run snapshots.
 // This generally must be run from a prompt with elevated privileges (root or administrator).
 func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
 	if infoCb == nil {

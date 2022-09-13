@@ -4,8 +4,7 @@ package fs_snapshot
 
 import "errors"
 
-// CurrentUserCanCreateSnapshots returns information if the current user can create snapshots
-func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (bool, error) {
+func currentUserCanCreateSnapshotsForOS(infoCb InfoMessageCallback) (bool, error) {
 	return false, errors.New("snapshots not supported in this OS")
 }
 
