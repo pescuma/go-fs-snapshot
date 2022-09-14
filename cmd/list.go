@@ -51,10 +51,16 @@ func (c *listCmd) Run(ctx *context) error {
 	})
 
 	for _, p := range ps {
+		setID := ""
+		provider := ""
+
 		if ctx.globals.Verbose == 0 {
+			if p.Set != nil {
+				setID = ctx.snapshoter.SimplifyID(p.Set.ID)
+			}
 			table.Body.Cells = append(table.Body.Cells, []*simpletable.Cell{
 				{Text: ctx.snapshoter.SimplifyID(p.ID)},
-				{Text: ctx.snapshoter.SimplifyID(p.Set.ID)},
+				{Text: setID},
 				{Text: p.OriginalPath},
 				{Text: p.SnapshotPath},
 				{Text: p.CreationTime.Local().Format("2006-01-02 15:04")},
@@ -62,13 +68,19 @@ func (c *listCmd) Run(ctx *context) error {
 			})
 
 		} else {
+			if p.Set != nil {
+				setID = p.Set.ID
+			}
+			if p.Provider != nil {
+				provider = p.Provider.Name
+			}
 			table.Body.Cells = append(table.Body.Cells, []*simpletable.Cell{
 				{Text: p.ID},
-				{Text: p.Set.ID},
+				{Text: setID},
 				{Text: p.OriginalPath},
 				{Text: p.SnapshotPath},
 				{Text: p.CreationTime.Local().Format("2006-01-02 15:04:05 -07")},
-				{Text: p.Provider.Name},
+				{Text: provider},
 				{Text: p.State},
 				{Text: p.Attributes},
 			})
