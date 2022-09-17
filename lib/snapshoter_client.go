@@ -174,7 +174,7 @@ func (s *clientSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
 	return reply.Deleted, nil
 }
 
-func (s *clientSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error) {
+func (s *clientSnapshoter) StartBackup(opts *BackupConfig) (Backuper, error) {
 	//TODO implement me
 	panic("implement me")
 }

@@ -350,24 +350,27 @@ func (s *windowsSnapshoter) NewBackupComponentsForManagement() (*internal_window
 	return bc, nil
 }
 
-func (s *windowsSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error) {
-	if opts == nil {
-		opts = &SnapshotOptions{}
+func (s *windowsSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
+	if cfg == nil {
+		cfg = &BackupConfig{}
 	}
 
-	providerID, err := s.getProviderID(opts.ProviderID)
+	providerID, err := s.getProviderID(cfg.ProviderID)
 	if err != nil {
 		return nil, err
 	}
 
+	ic := cfg.InfoCallback
+	if ic == nil {
+		ic = s.infoCallback
+	}
+
 	return &windowsBackuper{
-		opts: &internal_windows.SnapshotOptions{
-			ProviderID: providerID,
-			Timeout:    opts.Timeout,
-			Writters:   !opts.Simple,
-			InfoCallback: func(level internal_windows.MessageLevel, format string, a ...interface{}) {
-				s.infoCallback(MessageLevel(level), format, a)
-			},
+		cfg: &internal_windows.SnapshotOptions{
+			ProviderID:   providerID,
+			Timeout:      cfg.Timeout,
+			Writters:     !cfg.Simple,
+			InfoCallback: ic,
 		},
 		infoCallback: s.infoCallback,
 		volumes:      make(map[string]*volumeInfo),

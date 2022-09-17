@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -79,8 +80,15 @@ type server struct {
 	rpc.UnimplementedFsSnapshotServer
 
 	snapshoter   Snapshoter
+	backupers    map[uint32]*backuper
+	nextId       uint32
 	activityChan chan activity
 	infoCallback InfoMessageCallback
+}
+
+type backuper struct {
+	backuper        Backuper
+	messageReceiver InfoMessageCallback
 }
 
 func (s *server) sendActivity(a activity) {
@@ -118,7 +126,7 @@ func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRe
 		Providers: make([]*rpc.Provider, len(providers)),
 	}
 	for i, p := range providers {
-		reply.Providers[i] = convertProvidertToRPC(p)
+		reply.Providers[i] = convertProviderToRPC(p)
 	}
 
 	return &reply, nil
@@ -211,35 +219,129 @@ func (s *server) DeleteSnapshot(ctx context.Context, request *rpc.DeleteRequest)
 	}, nil
 }
 
-func (s *server) StartBackup(request *rpc.StartBackupRequest, backupServer rpc.FsSnapshot_StartBackupServer) error {
+func (s *server) StartBackup(request *rpc.StartBackupRequest, response rpc.FsSnapshot_StartBackupServer) error {
 	s.sendActivity(commandStart)
 	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: StartBackup(\"%v\", %v, %v)", request.ProviderId, request.TimeoutInSec, request.Simple)
+
+	b := &backuper{}
+
+	b.messageReceiver = func(level MessageLevel, format string, a ...interface{}) {
+		_ = response.Send(&rpc.StartBackupReply{
+			MessageOrResult: &rpc.StartBackupReply_Message{
+				Message: &rpc.OutputMessage{
+					Level:   rpc.MessageLevel(level),
+					Message: fmt.Sprintf(format, a),
+				},
+			},
+		})
+	}
+
+	var err error
+	b.backuper, err = s.snapshoter.StartBackup(&BackupConfig{
+		ProviderID: request.ProviderId,
+		Timeout:    time.Duration(request.TimeoutInSec) * time.Second,
+		Simple:     request.Simple,
+		InfoCallback: func(level MessageLevel, format string, a ...interface{}) {
+			s.infoCallback(level, format, a)
+			b.messageReceiver(level, format, a)
+		},
+	})
+
+	b.messageReceiver = nil
+
+	if err != nil {
+		return err
+	}
+
+	id := atomic.AddUint32(&s.nextId, 1)
+
+	s.backupers[id] = b
+
+	err = response.Send(&rpc.StartBackupReply{
+		MessageOrResult: &rpc.StartBackupReply_Result{
+			Result: &rpc.StartBackupResult{
+				BackuperId: id,
+			},
+		},
+	})
+
+	if err != nil {
+		delete(s.backupers, id)
+		return err
+	}
 
 	s.sendActivity(backupStart)
 
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
-func (s *server) TryToCreateTemporarySnapshot(request *rpc.TryToCreateTemporarySnapshotRequest, snapshotServer rpc.FsSnapshot_TryToCreateTemporarySnapshotServer) error {
+func (s *server) TryToCreateTemporarySnapshot(request *rpc.TryToCreateTemporarySnapshotRequest, response rpc.FsSnapshot_TryToCreateTemporarySnapshotServer) error {
 	s.sendActivity(commandStart)
 	defer s.sendActivity(commandEnd)
 
-	//TODO implement me
-	panic("implement me")
+	b, ok := s.backupers[request.BackuperId]
+	if !ok {
+		return errors.Errorf("unknown backuper: %v", request.BackuperId)
+	}
+
+	b.messageReceiver = func(level MessageLevel, format string, a ...interface{}) {
+		_ = response.Send(&rpc.TryToCreateTemporarySnapshotReply{
+			MessageOrResult: &rpc.TryToCreateTemporarySnapshotReply_Message{
+				Message: &rpc.OutputMessage{
+					Level:   rpc.MessageLevel(level),
+					Message: fmt.Sprintf(format, a),
+				},
+			},
+		})
+	}
+
+	snapshotDir, err := b.backuper.TryToCreateTemporarySnapshot(request.Dir)
+
+	b.messageReceiver = nil
+
+	if err != nil {
+		return err
+	}
+
+	return response.Send(&rpc.TryToCreateTemporarySnapshotReply{
+		MessageOrResult: &rpc.TryToCreateTemporarySnapshotReply_Result{
+			Result: &rpc.TryToCreateTemporarySnapshotResult{
+				SnapshotDir: snapshotDir,
+			},
+		},
+	})
 }
 
-func (s *server) CloseBackup(request *rpc.CloseBackupRequest, backupServer rpc.FsSnapshot_CloseBackupServer) error {
+func (s *server) CloseBackup(request *rpc.CloseBackupRequest, response rpc.FsSnapshot_CloseBackupServer) error {
 	s.sendActivity(commandStart)
 	defer s.sendActivity(commandEnd)
+
+	b, ok := s.backupers[request.BackuperId]
+	if !ok {
+		return errors.Errorf("unknown backuper: %v", request.BackuperId)
+	}
+
+	b.messageReceiver = func(level MessageLevel, format string, a ...interface{}) {
+		_ = response.Send(&rpc.CloseBackupReply{
+			Message: &rpc.OutputMessage{
+				Level:   rpc.MessageLevel(level),
+				Message: fmt.Sprintf(format, a),
+			},
+		})
+	}
+
+	b.backuper.Close()
+
+	b.messageReceiver = nil
 
 	s.sendActivity(backupEnd)
 
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
-func convertProvidertToRPC(p *Provider) *rpc.Provider {
+func convertProviderToRPC(p *Provider) *rpc.Provider {
 	return &rpc.Provider{
 		Id:      p.ID,
 		Name:    p.Name,
@@ -297,7 +399,7 @@ func convertSnapshotToRPC(snap *Snapshot, includeSet bool) *rpc.Snapshot {
 		OriginalPath: snap.OriginalPath,
 		SnapshotPath: snap.SnapshotPath,
 		CreationTime: snap.CreationTime.In(time.UTC).Unix(),
-		Provider:     convertProvidertToRPC(snap.Provider),
+		Provider:     convertProviderToRPC(snap.Provider),
 		State:        snap.State,
 		Attributes:   snap.Attributes,
 	}
@@ -320,6 +422,14 @@ func convertSnapshotToLocal(snap *rpc.Snapshot, set *SnapshotSet) *Snapshot {
 		State:        snap.State,
 		Attributes:   snap.Attributes,
 	}
+}
+
+func timeToInt64(t time.Time) int64 {
+	return t.In(time.UTC).Unix()
+}
+
+func int64ToTime(t int64) time.Time {
+	return time.Unix(t, 0).UTC().In(time.Local)
 }
 
 type activity int

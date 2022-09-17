@@ -31,7 +31,7 @@ type Snapshoter interface {
 	DeleteSnapshot(id string, force bool) (bool, error)
 
 	// StartBackup creates a Backuper to allow easy backup creation.
-	StartBackup(opts *SnapshotOptions) (Backuper, error)
+	StartBackup(cfg *BackupConfig) (Backuper, error)
 
 	// Close frees all resources.
 	Close()
@@ -81,7 +81,7 @@ const (
 	TraceLevel
 )
 
-type SnapshotOptions struct {
+type BackupConfig struct {
 	ProviderID string
 
 	Timeout time.Duration
@@ -89,6 +89,9 @@ type SnapshotOptions struct {
 	// Simple - try to do it as simple as possible, but not simpler.
 	// In Windows this means do not use VSS Writers.
 	Simple bool
+
+	// If set, overrides the info callback from the snapshoter
+	InfoCallback InfoMessageCallback
 }
 
 // NewSnapshoter creates a new snapshoter.

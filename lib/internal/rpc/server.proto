@@ -62,7 +62,7 @@ message DeleteReply {
 
 message StartBackupRequest {
   string providerId = 1;
-  int32 timeout = 2;
+  int32 timeoutInSec = 2;
   bool simple = 3;
 }
 message StartBackupReply {
@@ -77,7 +77,7 @@ message StartBackupResult {
 
 message TryToCreateTemporarySnapshotRequest {
   uint32 backuperId = 1;
-  repeated string dirs = 2;
+  string dir = 2;
 }
 message TryToCreateTemporarySnapshotReply {
   oneof MessageOrResult {
@@ -86,7 +86,7 @@ message TryToCreateTemporarySnapshotReply {
   }
 }
 message TryToCreateTemporarySnapshotResult {
-  map<string, string> dirs = 1;
+  string snapshotDir = 1;
 }
 
 message CloseBackupRequest {

@@ -115,7 +115,7 @@ func (s *macosSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
 	return true, nil
 }
 
-func (s *macosSnapshoter) StartBackup(opts *SnapshotOptions) (Backuper, error) {
+func (s *macosSnapshoter) StartBackup(opts *BackupConfig) (Backuper, error) {
 	//TODO implement me
 	panic("implement me")
 }
