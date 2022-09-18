@@ -1,4 +1,4 @@
-package cli
+package main
 
 type serverArgs struct {
 	Server               string `help:"Server to connect to, in the format ip:port"`

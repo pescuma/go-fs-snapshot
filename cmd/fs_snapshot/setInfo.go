@@ -1,4 +1,4 @@
-package cli
+package main
 
 import (
 	"github.com/pescuma/go-fs-snapshot/lib"
