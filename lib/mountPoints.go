@@ -34,7 +34,7 @@ func newVolumeInfos() *volumeInfos {
 	return result
 }
 
-func (i *volumeInfos) AddVolume(volume string, listMountPoints func() ([]string, error)) error {
+func (i *volumeInfos) AddVolume(volume string, listMountPoints func(volume string) ([]string, error)) error {
 	i.mutex.RLock()
 
 	_, ok := i.volumes[volume]
@@ -45,7 +45,7 @@ func (i *volumeInfos) AddVolume(volume string, listMountPoints func() ([]string,
 		return nil
 	}
 
-	ps, err := listMountPoints()
+	ps, err := listMountPoints(volume)
 	if err != nil {
 		return err
 	}

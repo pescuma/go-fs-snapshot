@@ -4,7 +4,6 @@ package fs_snapshot
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 	"syscall"
 
@@ -12,70 +11,28 @@ import (
 )
 
 type macosBackuper struct {
-	volumes       *volumeInfos
+	baseBackuper
+
 	snapshotDates []string
 	snapshotPaths []string
-	infoCallback  InfoMessageCallback
 }
 
-func (b *macosBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (string, error) {
-	dir, err := filepath.Abs(inputDirectory)
-	if err != nil {
-		return inputDirectory, err
+func newMacosBackuper(infoCallback InfoMessageCallback, listMountPoints func() ([]string, error)) (*macosBackuper, error) {
+	result := &macosBackuper{}
+	result.volumes = newVolumeInfos()
+	result.infoCallback = infoCallback
+
+	result.baseBackuper.listMountPoints = func(volume string) ([]string, error) {
+		if volume != "" {
+			return nil, errors.Errorf("unknown volume: %v", volume)
+		}
+
+		return listMountPoints()
 	}
+	result.baseBackuper.createSnapshot = result.createSnapshot
+	result.baseBackuper.deleteSnapshot = result.deleteSnapshot
 
-	path, snapshotPath, err := b.computeSnapshotPaths(dir)
-	if err != nil {
-		return inputDirectory, err
-	}
-
-	newDir, err := changeBaseDir(dir, path, snapshotPath)
-	if err != nil {
-		return inputDirectory, err
-	}
-
-	return newDir, nil
-}
-
-func (b *macosBackuper) computeSnapshotPaths(dir string) (string, string, error) {
-	m := b.volumes.GetMountPoint(dir)
-
-	// First use only a read lock to avoid stopping too much
-	m.mutex.RLock()
-
-	path := m.path
-	snapshotPath := m.snapshotPath
-	state := m.state
-
-	m.mutex.RUnlock()
-
-	switch state {
-	case StateSuccess:
-		return path, snapshotPath, nil
-	case StateFailed:
-		return "", "", errors.New("snapshot failed in a previous attempt")
-	}
-
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	// Because we locked again, someone else may have already done it
-	switch m.state {
-	case StateSuccess:
-		return m.path, m.snapshotPath, nil
-	case StateFailed:
-		return "", "", errors.New("snapshot failed in a previous attempt")
-	}
-
-	snapshotPath, err := b.createSnapshot(m)
-	if err != nil {
-		return "", "", err
-	}
-
-	m.state = StateSuccess
-	m.snapshotPath = snapshotPath
-
-	return path, snapshotPath, nil
+	return result, nil
 }
 
 func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
@@ -112,37 +69,12 @@ func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 	return snapshotPath, nil
 }
 
-func (b *macosBackuper) ListSnapshotedDirectories() map[string]string {
-	result := make(map[string]string)
-
-	b.volumes.mutex.RLock()
-	defer b.volumes.mutex.RUnlock()
-
-	for _, v := range b.volumes.volumes {
-		for _, m := range v {
-			m.mutex.RLock()
-
-			if m.state == StateSuccess {
-				result[m.path] = m.snapshotPath
-			}
-
-			m.mutex.RUnlock()
-		}
-	}
-
-	return result
+func (b *macosBackuper) deleteSnapshot(m *mountPointInfo) error {
+	return run(b.infoCallback, "umount", m.snapshotPath)
 }
 
 func (b *macosBackuper) Close() {
-	// No locks used because this must be used only once after everything else ended
-
-	for _, v := range b.volumes.volumes {
-		for _, m := range v {
-			if m.state == StateSuccess {
-				_ = run(b.infoCallback, "umount", m.snapshotPath)
-			}
-		}
-	}
+	b.baseBackuper.close()
 
 	for _, p := range b.snapshotPaths {
 		err := syscall.Rmdir(p)
@@ -158,7 +90,6 @@ func (b *macosBackuper) Close() {
 		}
 	}
 
-	b.volumes.volumes = nil
 	b.snapshotPaths = nil
 	b.snapshotDates = nil
 }

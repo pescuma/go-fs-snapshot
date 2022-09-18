@@ -139,17 +139,7 @@ func (s *macosSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	b := &macosBackuper{
-		volumes:      newVolumeInfos(),
-		infoCallback: ic,
-	}
-
-	err := b.volumes.AddVolume("", s.listMountPoints)
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+	return newMacosBackuper(s.infoCallback, s.listMountPoints)
 }
 
 func (s *macosSnapshoter) Close() {
