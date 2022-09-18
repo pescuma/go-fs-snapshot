@@ -3,8 +3,18 @@ package fs_snapshot
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
+
+func changeBaseDir(path string, oldBase string, newBase string) (string, error) {
+	relative, err := filepath.Rel(oldBase, path)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(newBase, relative), nil
+}
 
 func runAndReturnOutput(infoCb InfoMessageCallback, name string, arg ...string) (string, error) {
 	cmd := exec.Command(name, arg...)

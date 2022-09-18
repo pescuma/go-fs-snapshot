@@ -1,3 +1,5 @@
+//go:build windows
+
 package fs_snapshot
 
 import (
@@ -8,15 +10,6 @@ import (
 
 	"github.com/go-ole/go-ole"
 )
-
-func changeBaseDir(path string, oldBase string, newBase string) (string, error) {
-	relative, err := filepath.Rel(oldBase, path)
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(newBase, relative), nil
-}
 
 func absolutePath(path string) (string, error) {
 	abspath, err := filepath.Abs(path)

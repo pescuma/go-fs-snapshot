@@ -1,3 +1,5 @@
+//go:build windows
+
 package fs_snapshot
 
 import (

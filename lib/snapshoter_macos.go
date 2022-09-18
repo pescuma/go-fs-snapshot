@@ -10,6 +10,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	prefix     = "com.apple.TimeMachine."
+	suffix     = ".local"
+	providerID = "tmutil-local"
+)
+
 func startServerForOS(infoCb InfoMessageCallback) error {
 	return errors.New("can't start server with elevated privileges - run with sudo if needed")
 }
@@ -38,6 +44,8 @@ type macosSnapshoter struct {
 }
 
 func (s *macosSnapshoter) SimplifyID(id string) string {
+	id = strings.TrimPrefix(id, prefix)
+	id = strings.TrimSuffix(id, suffix)
 	return id
 }
 
@@ -66,7 +74,7 @@ func (s *macosSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 	provider := s.newProvider()
 
 	for _, m := range mountPoints {
-		output, err := runAndReturnOutput(s.infoCallback, "tmutil", "listlocalsnapshotdates", m)
+		output, err := runAndReturnOutput(s.infoCallback, "tmutil", "listlocalsnapshots", m)
 		if err != nil {
 			return nil, err
 		}
@@ -74,12 +82,14 @@ func (s *macosSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 		lines := strings.Split(output, "\n")
 		lines = lines[1:]
 
-		for _, l := range lines {
-			if filterID != "" && l != filterID {
+		for _, line := range lines {
+			simple := s.SimplifyID(line)
+
+			if filterID != "" && line != filterID && simple != filterID {
 				continue
 			}
 
-			t, err := time.Parse("2006-01-02-150405", l)
+			t, err := time.Parse("2006-01-02-150405", simple)
 			if err != nil {
 				return nil, err
 			}
@@ -87,7 +97,7 @@ func (s *macosSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 			t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local)
 
 			result = append(result, &Snapshot{
-				ID:           l,
+				ID:           line,
 				OriginalPath: m,
 				SnapshotPath: "",
 				CreationTime: t,
@@ -115,9 +125,31 @@ func (s *macosSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
 	return true, nil
 }
 
-func (s *macosSnapshoter) StartBackup(opts *BackupConfig) (Backuper, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *macosSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
+	if cfg == nil {
+		cfg = &BackupConfig{}
+	}
+
+	if cfg.ProviderID != "" && cfg.ProviderID != providerID {
+		return nil, errors.Errorf("unknown provider id: %v", cfg.ProviderID)
+	}
+
+	ic := cfg.InfoCallback
+	if ic == nil {
+		ic = s.infoCallback
+	}
+
+	b := &macosBackuper{
+		volumes:      newVolumeInfos(),
+		infoCallback: ic,
+	}
+
+	err := b.volumes.AddVolume("", s.listMountPoints)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
 
 func (s *macosSnapshoter) Close() {
@@ -125,7 +157,7 @@ func (s *macosSnapshoter) Close() {
 
 func (s *macosSnapshoter) newProvider() *Provider {
 	return &Provider{
-		ID:      "tmutil-local",
+		ID:      providerID,
 		Name:    "Time Machine local snapshots",
 		Version: s.version,
 		Type:    "console application",

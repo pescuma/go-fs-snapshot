@@ -2,9 +2,8 @@ package fs_snapshot
 
 // Backuper is a class that allows easy temporary snapshot creation.
 // All snapshots created will be deleted when calling Close.
-// This class does not support being called from more than one thread/goroutine.
 type Backuper interface {
-	// TryToCreateTemporarySnapshot returns the snapshoted diretory volume if a snapshot could be made,
+	// TryToCreateTemporarySnapshot returns the snapshoted directory volume if a snapshot could be made,
 	// or the original directory otherwise.
 	// If the directory is not yet available as a snapshot, a snapshot is created.
 	// If the directory is inside an existing snapshot, the snapshot is re-used.
