@@ -11,20 +11,39 @@ type baseBackuper struct {
 	volumes      *volumeInfos
 	infoCallback InfoMessageCallback
 
+	caseSensitive   bool
+	absolutePath    func(path string) (string, error)
 	listMountPoints func(volume string) ([]string, error)
 	createSnapshot  func(m *mountPointInfo) (string, error)
 	deleteSnapshot  func(m *mountPointInfo) error
 }
 
 func (b *baseBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (string, error) {
-	dir, err := filepath.Abs(inputDirectory)
+	dir, err := b.absolutePath(inputDirectory)
 	if err != nil {
 		return inputDirectory, err
 	}
 
+	if !b.caseSensitive {
+		dir = strings.ToLower(dir)
+	}
+
 	volume := strings.ToLower(filepath.VolumeName(dir))
 
-	err = b.volumes.AddVolume(volume, b.listMountPoints)
+	err = b.volumes.AddVolume(volume, func(volume string) ([]string, error) {
+		mps, err := b.listMountPoints(volume)
+		if err != nil {
+			return nil, err
+		}
+
+		if !b.caseSensitive {
+			for i, m := range mps {
+				mps[i] = strings.ToLower(m)
+			}
+		}
+
+		return mps, nil
+	})
 	if err != nil {
 		return inputDirectory, err
 	}

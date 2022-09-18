@@ -3,221 +3,66 @@
 package fs_snapshot
 
 import (
-	"fmt"
-	"path/filepath"
-	"strings"
-	"sync"
+	"time"
+
+	"github.com/go-ole/go-ole"
 
 	"github.com/pescuma/go-fs-snapshot/lib/internal/windows"
 )
 
 type windowsBackuper struct {
-	opts         *internal_windows.SnapshotOptions
-	mutex        sync.RWMutex
-	volumes      map[string]*volumeInfo // The keys are all lower case
-	vssResults   []*internal_windows.SnapshotsResult
-	infoCallback InfoMessageCallback
+	baseBackuper
+
+	opts       *internal_windows.SnapshotOptions
+	vssResults []*internal_windows.SnapshotsResult
 }
 
-type volumeInfo struct {
-	volume       string
-	state        volumeState
-	snapshotPath string
+func newWindowsBackuper(providerID *ole.GUID, timeout time.Duration, simple bool, infoCallback InfoMessageCallback) (*windowsBackuper, error) {
+	result := &windowsBackuper{}
+
+	result.volumes = newVolumeInfos()
+	result.infoCallback = infoCallback
+
+	result.baseBackuper.caseSensitive = false
+	result.baseBackuper.absolutePath = absolutePath
+	result.baseBackuper.listMountPoints = internal_windows.EnumerateMountedFolders
+	result.baseBackuper.createSnapshot = result.createSnapshot
+	result.baseBackuper.deleteSnapshot = result.deleteSnapshot
+
+	result.opts = &internal_windows.SnapshotOptions{
+		ProviderID: providerID,
+		Timeout:    timeout,
+		Writters:   !simple,
+		InfoCallback: func(level internal_windows.MessageLevel, format string, a ...interface{}) {
+			infoCallback(MessageLevel(level), format, a...)
+		},
+	}
+
+	return result, nil
 }
 
-type volumeState int
+func (b *windowsBackuper) createSnapshot(m *mountPointInfo) (string, error) {
+	vsr, err := internal_windows.CreateSnapshots([]string{m.path}, b.opts)
 
-const (
-	StatePending volumeState = iota
-	StateSuccess
-	StateFailed
-)
-
-func (b *windowsBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (string, error) {
-	dir, err := absolutePath(inputDirectory)
-	if err != nil {
-		return inputDirectory, err
-	}
-
-	dir = strings.ToLower(dir) + `\`
-	dirInfo := b.getPathInfo(dir)
-
-	switch {
-	case dirInfo != nil && dirInfo.state == StateFailed:
-		return inputDirectory, nil
-
-	case dirInfo != nil && dirInfo.state == StateSuccess:
-		newDir, err := changeBaseDir(dir, dirInfo.volume, dirInfo.snapshotPath)
-		if err != nil {
-			return inputDirectory, err
-		}
-
-		return newDir, nil
-	}
-
-	volume := filepath.VolumeName(dir) + `\`
-
-	mounts, err := internal_windows.EnumerateMountedFolders(volume)
-	if err != nil {
-		return inputDirectory, err
-	}
-
-	for i := range mounts {
-		mounts[i] = strings.ToLower(mounts[i])
-	}
-
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-
-	needed := b.computeNeededInsideLock(dir, volume, mounts)
-
-	if len(needed) == 0 {
-		panic("Should not happen")
-	}
-
-	if b.infoCallback != nil {
-		b.infoCallback(InfoLevel, "Creating VSS snapshot of "+strings.Join(needed, " ; "))
-	}
-
-	vsr, err := internal_windows.CreateSnapshots(needed, b.opts)
 	b.vssResults = append(b.vssResults, vsr)
+
 	if err != nil {
-		b.markFailed(needed...)
-		b.markPending(mounts)
-		return inputDirectory, err
+		return "", err
 	}
 
-	for i := range needed {
-		orig := needed[i]
-		snap := vsr.GetSnapshotPath(orig)
-
-		if snap == orig {
-			b.markFailed(orig)
-		} else {
-			b.markSuccess(orig, snap)
-		}
-	}
-	b.markPending(mounts)
-
-	dirInfo = b.getPathInfoInsideLock(dir)
-	if dirInfo.state != StateSuccess {
-		return inputDirectory, nil
-	}
-
-	newDir, err := changeBaseDir(dir, dirInfo.volume, dirInfo.snapshotPath)
-	if err != nil {
-		return inputDirectory, err
-	}
-
-	return newDir, nil
+	return vsr.GetSnapshotPath(m.path), nil
 }
 
-func (b *windowsBackuper) computeNeededInsideLock(dir string, volume string, mounts []string) []string {
-	var needed []string
-
-	var needVolume = true
-	for _, mount := range mounts {
-		insideMount := strings.HasPrefix(dir, mount)
-		mountInside := strings.HasPrefix(mount, dir)
-
-		if !insideMount && !mountInside {
-			continue
-		}
-
-		if insideMount {
-			needVolume = false
-		}
-
-		if b.getVolumeStateInsideLock(mount) == StatePending {
-			needed = append(needed, mount)
-
-			if b.infoCallback != nil {
-				b.infoCallback(DetailsLevel, fmt.Sprintf("Detected mount point %v inside snapshot dir %v", mount, dir))
-			}
-		}
-	}
-
-	if needVolume && b.getVolumeStateInsideLock(volume) == StatePending {
-		needed = append([]string{volume}, needed...)
-	}
-	return needed
-}
-
-func (b *windowsBackuper) getVolumeStateInsideLock(volume string) volumeState {
-	mountInfo, ok := b.volumes[volume]
-	if !ok {
-		return StatePending
-	}
-
-	return mountInfo.state
-}
-
-func (b *windowsBackuper) getPathInfo(dir string) *volumeInfo {
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
-
-	return b.getPathInfoInsideLock(dir)
-}
-
-func (b *windowsBackuper) getPathInfoInsideLock(dir string) *volumeInfo {
-	var dirInfo *volumeInfo
-	for _, p := range b.volumes {
-		if strings.HasPrefix(dir, p.volume) && (dirInfo == nil || len(dirInfo.volume) < len(p.volume)) {
-			dirInfo = p
-		}
-	}
-
-	return dirInfo
-}
-
-func (b *windowsBackuper) markPending(volumes []string) {
-	for _, v := range volumes {
-		_, ok := b.volumes[v]
-		if !ok {
-			b.volumes[v] = &volumeInfo{
-				volume: v,
-				state:  StatePending,
-			}
-		}
-	}
-}
-
-func (b *windowsBackuper) markFailed(volumes ...string) {
-	for _, v := range volumes {
-		b.volumes[v] = &volumeInfo{
-			volume: v,
-			state:  StateFailed,
-		}
-	}
-}
-
-func (b *windowsBackuper) markSuccess(volume, snapshotPath string) {
-	b.volumes[volume] = &volumeInfo{
-		volume:       volume,
-		state:        StateSuccess,
-		snapshotPath: snapshotPath,
-	}
-}
-
-func (b *windowsBackuper) ListSnapshotedDirectories() map[string]string {
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
-
-	result := make(map[string]string)
-
-	for _, v := range b.volumes {
-		if v.state != StateSuccess {
-			continue
-		}
-
-		result[v.volume] = v.snapshotPath
-	}
-
-	return result
+func (b *windowsBackuper) deleteSnapshot(m *mountPointInfo) error {
+	return nil
 }
 
 func (b *windowsBackuper) Close() {
+	b.baseBackuper.close()
+
 	for _, r := range b.vssResults {
 		r.Close()
 	}
+
+	b.vssResults = nil
 }

@@ -8,7 +8,7 @@ import (
 
 func main() {
 	cfg := build.NewBuilderConfig()
-	cfg.Archs = []string{"windows", "darwin"}
+	cfg.Archs = []string{"windows/386", "windows/amd64", "darwin"}
 
 	b, err := build.NewBuilder(cfg)
 	if err != nil {

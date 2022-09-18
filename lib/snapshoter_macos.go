@@ -139,7 +139,7 @@ func (s *macosSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	return newMacosBackuper(s.infoCallback, s.listMountPoints)
+	return newMacosBackuper(ic, s.listMountPoints)
 }
 
 func (s *macosSnapshoter) Close() {

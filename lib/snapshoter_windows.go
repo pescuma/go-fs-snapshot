@@ -365,16 +365,7 @@ func (s *windowsSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	return &windowsBackuper{
-		cfg: &internal_windows.SnapshotOptions{
-			ProviderID:   providerID,
-			Timeout:      cfg.Timeout,
-			Writters:     !cfg.Simple,
-			InfoCallback: ic,
-		},
-		infoCallback: s.infoCallback,
-		volumes:      make(map[string]*volumeInfo),
-	}, nil
+	return newWindowsBackuper(providerID, cfg.Timeout, cfg.Simple, ic)
 }
 
 func (s *windowsSnapshoter) getProviderID(id string) (*ole.GUID, error) {

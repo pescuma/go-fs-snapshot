@@ -4,6 +4,7 @@ package fs_snapshot
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"syscall"
 
@@ -22,6 +23,8 @@ func newMacosBackuper(infoCallback InfoMessageCallback, listMountPoints func() (
 	result.volumes = newVolumeInfos()
 	result.infoCallback = infoCallback
 
+	result.baseBackuper.caseSensitive = true
+	result.baseBackuper.absolutePath = filepath.Abs
 	result.baseBackuper.listMountPoints = func(volume string) ([]string, error) {
 		if volume != "" {
 			return nil, errors.Errorf("unknown volume: %v", volume)
