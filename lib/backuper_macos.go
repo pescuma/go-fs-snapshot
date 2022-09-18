@@ -16,30 +16,41 @@ type macosBackuper struct {
 
 	snapshotDates []string
 	snapshotPaths []string
+	mountPoints   map[string]string
 }
 
-func newMacosBackuper(infoCallback InfoMessageCallback, listMountPoints func() ([]string, error)) (*macosBackuper, error) {
+func newMacosBackuper(infoCallback InfoMessageCallback, mountPoints map[string]string) (*macosBackuper, error) {
 	result := &macosBackuper{}
 	result.volumes = newVolumeInfos()
 	result.infoCallback = infoCallback
+	result.mountPoints = mountPoints
 
 	result.baseBackuper.caseSensitive = true
 	result.baseBackuper.absolutePath = filepath.Abs
-	result.baseBackuper.listMountPoints = func(volume string) ([]string, error) {
-		if volume != "" {
-			return nil, errors.Errorf("unknown volume: %v", volume)
-		}
-
-		return listMountPoints()
-	}
+	result.baseBackuper.listMountPoints = result.listMountPoints
 	result.baseBackuper.createSnapshot = result.createSnapshot
 	result.baseBackuper.deleteSnapshot = result.deleteSnapshot
 
 	return result, nil
 }
 
+func (b *macosBackuper) listMountPoints(volume string) ([]string, error) {
+	if volume != "" {
+		return nil, errors.Errorf("unknown volume: %v", volume)
+	}
+
+	result := make([]string, 0, len(b.mountPoints))
+	for k, _ := range b.mountPoints {
+		result = append(result, k)
+	}
+
+	return result, nil
+}
+
 func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
-	output, err := runAndReturnOutput(b.infoCallback, "tmutil", "localsnapshot", m.path)
+	drive := b.mountPoints[m.path]
+
+	output, err := runAndReturnOutput(b.infoCallback, "tmutil", "localsnapshot", drive)
 	if err != nil {
 		m.state = StateFailed
 		return "", errors.Errorf("error creating local snapshot: %v", err)
@@ -63,7 +74,7 @@ func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 
 	b.snapshotPaths = append(b.snapshotPaths, snapshotPath)
 
-	err = run(b.infoCallback, "mount_apfs", "-o", "ro", "-s", prefix+snapshotDate+suffix, m.path, snapshotPath)
+	err = run(b.infoCallback, "mount_apfs", "-o", "ro", "-s", prefix+snapshotDate+suffix, drive, snapshotPath)
 	if err != nil {
 		m.state = StateFailed
 		return "", errors.Errorf("error mounting local snapshot: %v", err)

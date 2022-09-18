@@ -73,8 +73,8 @@ func (s *macosSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 
 	provider := s.newProvider()
 
-	for _, m := range mountPoints {
-		output, err := runAndReturnOutput(s.infoCallback, "tmutil", "listlocalsnapshots", m)
+	for k, v := range mountPoints {
+		output, err := runAndReturnOutput(s.infoCallback, "tmutil", "listlocalsnapshots", v)
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +98,7 @@ func (s *macosSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 
 			result = append(result, &Snapshot{
 				ID:           line,
-				OriginalPath: m,
+				OriginalPath: k,
 				SnapshotPath: "",
 				CreationTime: t,
 				Set:          nil,
@@ -134,12 +134,17 @@ func (s *macosSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		return nil, errors.Errorf("unknown provider id: %v", cfg.ProviderID)
 	}
 
+	mountPoints, err := s.listMountPoints()
+	if err != nil {
+		return nil, err
+	}
+
 	ic := cfg.InfoCallback
 	if ic == nil {
 		ic = s.infoCallback
 	}
 
-	return newMacosBackuper(ic, s.listMountPoints)
+	return newMacosBackuper(ic, mountPoints)
 }
 
 func (s *macosSnapshoter) Close() {
@@ -154,20 +159,8 @@ func (s *macosSnapshoter) newProvider() *Provider {
 	}
 }
 
-func (s *macosSnapshoter) listMountPoints() ([]string, error) {
-	output, err := runAndReturnOutput(s.infoCallback, "diskutil", "apfs", "list")
-	if err != nil {
-		return nil, err
-	}
-
-	re := regexp.MustCompile("Snapshot Mount Point: +(/[^\\r\\n]*)")
-	matches := re.FindAllStringSubmatch(output, -1)
-
-	result := make([]string, len(matches))
-
-	for i, m := range matches {
-		result[i] = m[1]
-	}
-
-	return result, nil
+func (s *macosSnapshoter) listMountPoints() (map[string]string, error) {
+	return map[string]string{
+		"/": "/System/Volumes/Data",
+	}, nil
 }
