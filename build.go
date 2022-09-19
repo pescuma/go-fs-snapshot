@@ -8,14 +8,18 @@ import (
 
 func main() {
 	cfg := build.NewBuilderConfig()
-	cfg.Archs = []string{"windows/386", "windows/amd64", "darwin"}
+	cfg.Archs = []string{
+		"windows/386", "windows/amd64",
+		"darwin",
+		//"linux/amd64",
+	}
 
 	b, err := build.NewBuilder(cfg)
 	if err != nil {
 		panic(err)
 	}
 
-	err = b.RunTarget("build")
+	err = b.RunTarget("all")
 	if err != nil {
 		panic(err)
 	}
