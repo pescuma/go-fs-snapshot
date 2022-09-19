@@ -3,6 +3,7 @@ module github.com/pescuma/go-fs-snapshot
 go 1.17
 
 require (
+	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/alecthomas/kong v0.6.1
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/fourcorelabs/wintoken v1.0.0
@@ -16,10 +17,9 @@ require (
 )
 
 require (
-	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
-	github.com/pescuma/go-build v0.0.0-20220918203902-caa0c4b600e9 // indirect
+	github.com/pescuma/go-build v0.0.0-20220919024803-2215c0d82775 // indirect
 	github.com/rivo/uniseg v0.3.4 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974 // indirect

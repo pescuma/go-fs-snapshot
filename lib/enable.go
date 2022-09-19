@@ -3,14 +3,20 @@ package fs_snapshot
 import (
 	"context"
 	"fmt"
-	"github.com/pescuma/go-fs-snapshot/lib/internal/rpc"
+	"time"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"time"
+
+	"github.com/pescuma/go-fs-snapshot/lib/internal/rpc"
 )
 
 // CurrentUserCanCreateSnapshots returns information if the current user can create snapshots
 func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (bool, error) {
+	if infoCb == nil {
+		infoCb = func(level MessageLevel, format string, a ...interface{}) {}
+	}
+
 	can, err := currentUserCanCreateSnapshotsForOS(infoCb)
 	if err == nil {
 		return can, nil
@@ -77,4 +83,14 @@ func testServerCanCreateSnapshots(addr string, infoCb InfoMessageCallback) (bool
 	}
 
 	return reply.Can, nil
+}
+
+// EnableSnapshotsForUser enables the current user to run snapshots.
+// This generally must be run from a prompt with elevated privileges (root or administrator).
+func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
+	if infoCb == nil {
+		infoCb = func(level MessageLevel, format string, a ...interface{}) {}
+	}
+
+	return enableSnapshotsForUserForOS(username, infoCb)
 }

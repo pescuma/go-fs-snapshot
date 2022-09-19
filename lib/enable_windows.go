@@ -4,24 +4,21 @@ package fs_snapshot
 
 import (
 	"fmt"
-	"github.com/fourcorelabs/wintoken"
-	"github.com/pkg/errors"
-	"github.com/winlabs/gowin32"
-	"golang.org/x/sys/windows"
 	"os"
 	"os/user"
 	"sort"
 	"strings"
+
+	"github.com/fourcorelabs/wintoken"
+	"github.com/pkg/errors"
+	"github.com/winlabs/gowin32"
+	"golang.org/x/sys/windows"
 )
 
 const backupPrivilege = "SeBackupPrivilege"
 const batchLogonPrivilege = "SeBatchLogonRight"
 
 func currentUserCanCreateSnapshotsForOS(infoCb InfoMessageCallback) (bool, error) {
-	if infoCb == nil {
-		infoCb = func(level MessageLevel, format string, a ...interface{}) {}
-	}
-
 	infoCb(TraceLevel, "TOKEN OpenProcessToken()")
 	token, err := wintoken.OpenProcessToken(0, wintoken.TokenPrimary)
 	if err != nil {
@@ -54,13 +51,7 @@ func currentUserCanCreateSnapshotsForOS(infoCb InfoMessageCallback) (bool, error
 	return has, nil
 }
 
-// EnableSnapshotsForUser enables the current user to run snapshots.
-// This generally must be run from a prompt with elevated privileges (root or administrator).
-func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
-	if infoCb == nil {
-		infoCb = func(level MessageLevel, format string, a ...interface{}) {}
-	}
-
+func enableSnapshotsForUserForOS(username string, infoCb InfoMessageCallback) error {
 	u, err := user.Lookup(username)
 	if err != nil {
 		return err

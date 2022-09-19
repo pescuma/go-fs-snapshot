@@ -50,6 +50,8 @@ func (b *macosBackuper) listMountPoints(volume string) ([]string, error) {
 func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 	drive := b.mountPoints[m.path]
 
+	b.infoCallback(DetailsLevel, "Creating local snapshot")
+
 	output, err := runAndReturnOutput(b.infoCallback, "tmutil", "localsnapshot", drive)
 	if err != nil {
 		m.state = StateFailed
@@ -66,6 +68,8 @@ func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 	snapshotDate := matches[1]
 	b.snapshotDates = append(b.snapshotDates, snapshotDate)
 
+	b.infoCallback(DetailsLevel, "Created local snapshot with date %v", snapshotDate)
+
 	snapshotPath, err := os.MkdirTemp(os.TempDir(), "fs_snapshot_")
 	if err != nil {
 		m.state = StateFailed
@@ -73,6 +77,8 @@ func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 	}
 
 	b.snapshotPaths = append(b.snapshotPaths, snapshotPath)
+
+	b.infoCallback(DetailsLevel, "Mounting snapshot at %v", snapshotPath)
 
 	err = run(b.infoCallback, "mount_apfs", "-o", "ro", "-s", prefix+snapshotDate+suffix, drive, snapshotPath)
 	if err != nil {
@@ -84,6 +90,8 @@ func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 }
 
 func (b *macosBackuper) deleteSnapshot(m *mountPointInfo) error {
+	b.infoCallback(DetailsLevel, "Unmounting snapshot at %v", m.snapshotPath)
+
 	return run(b.infoCallback, "umount", m.snapshotPath)
 }
 
@@ -91,6 +99,7 @@ func (b *macosBackuper) Close() {
 	b.baseBackuper.close()
 
 	for _, p := range b.snapshotPaths {
+		b.infoCallback(DetailsLevel, "Deleting snapshot mount folder %v", p)
 		err := syscall.Rmdir(p)
 		if err != nil {
 			b.infoCallback(InfoLevel, "Error removing %v : %v", p, err)
@@ -98,6 +107,7 @@ func (b *macosBackuper) Close() {
 	}
 
 	for _, d := range b.snapshotDates {
+		b.infoCallback(DetailsLevel, "Deleting local snapshot with date %v", d)
 		err := run(b.infoCallback, "tmutil", "deletelocalsnapshots", d)
 		if err != nil {
 			b.infoCallback(InfoLevel, "Error deleting local snapshot %v : %v", d, err)

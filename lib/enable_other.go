@@ -10,6 +10,6 @@ func currentUserCanCreateSnapshotsForOS(infoCb InfoMessageCallback) (bool, error
 
 // EnableSnapshotsForUser enables the current user to run snapshots.
 // This generally must be run from a prompt with elevated privileges (root or administrator).
-func EnableSnapshotsForUser(username string, infoCb InfoMessageCallback) error {
+func enableSnapshotsForUserForOS(username string, infoCb InfoMessageCallback) error {
 	return errors.New("snapshots not supported in this OS")
 }
