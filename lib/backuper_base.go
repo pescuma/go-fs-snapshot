@@ -1,6 +1,7 @@
 package fs_snapshot
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -23,11 +24,22 @@ func (b *baseBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (stri
 		return inputDirectory, err
 	}
 
+	dir = addPathSeparatorAsSuffix(dir)
+
+	s, err := os.Stat(dir)
+	if err != nil {
+		return inputDirectory, err
+	}
+
+	if !s.IsDir() {
+		return inputDirectory, errors.New("only able to snapshot directories")
+	}
+
 	if !b.caseSensitive {
 		dir = strings.ToLower(dir)
 	}
 
-	volume := strings.ToLower(filepath.VolumeName(dir))
+	volume := filepath.VolumeName(dir)
 
 	err = b.volumes.AddVolume(volume, func(volume string) ([]string, error) {
 		mps, err := b.listMountPoints(volume)
@@ -35,10 +47,11 @@ func (b *baseBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (stri
 			return nil, err
 		}
 
-		if !b.caseSensitive {
-			for i, m := range mps {
-				mps[i] = strings.ToLower(m)
+		for i, m := range mps {
+			if !b.caseSensitive {
+				m = strings.ToLower(m)
 			}
+			mps[i] = addPathSeparatorAsSuffix(m)
 		}
 
 		return mps, nil
@@ -57,6 +70,8 @@ func (b *baseBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (stri
 		return inputDirectory, err
 	}
 
+	newDir = addPathSeparatorAsSuffix(newDir)
+
 	return newDir, nil
 }
 
@@ -66,8 +81,8 @@ func (b *baseBackuper) computeSnapshotPath(dir string) (string, string, error) {
 	// First use only a read lock to avoid stopping too much
 	m.mutex.RLock()
 
-	path := m.path
-	snapshotPath := m.snapshotPath
+	path := m.dir
+	snapshotPath := m.snapshotDir
 	state := m.state
 
 	m.mutex.RUnlock()
@@ -85,7 +100,7 @@ func (b *baseBackuper) computeSnapshotPath(dir string) (string, string, error) {
 	// Because we locked again, someone else may have already done it
 	switch m.state {
 	case StateSuccess:
-		return path, m.snapshotPath, nil
+		return path, m.snapshotDir, nil
 	case StateFailed:
 		return "", "", errors.New("snapshot failed in a previous attempt")
 	}
@@ -98,7 +113,7 @@ func (b *baseBackuper) computeSnapshotPath(dir string) (string, string, error) {
 	}
 
 	m.state = StateSuccess
-	m.snapshotPath = snapshotPath
+	m.snapshotDir = snapshotPath
 
 	return path, snapshotPath, nil
 }
@@ -115,11 +130,11 @@ func (b *baseBackuper) ListSnapshotedDirectories() map[string]string {
 
 			switch m.state {
 			case StateSuccess:
-				result[m.path] = m.snapshotPath
+				result[m.dir] = m.snapshotDir
 			case StateFailed:
-				result[m.path] = m.path
+				result[m.dir] = m.dir
 			case StatePending:
-				result[m.path] = ""
+				result[m.dir] = ""
 			}
 
 			m.mutex.RUnlock()

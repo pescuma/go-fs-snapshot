@@ -124,9 +124,9 @@ func NewSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 	}
 
 	if cfg.ConnectionType != ServerOnly {
-		return newNullSnapshoter(), errLocal
+		return nil, errLocal
 	} else {
-		return newNullSnapshoter(), errServer
+		return nil, errServer
 	}
 }
 

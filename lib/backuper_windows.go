@@ -20,7 +20,7 @@ type windowsBackuper struct {
 func newWindowsBackuper(providerID *ole.GUID, timeout time.Duration, simple bool,
 	listMountPoints func(volume string) ([]string, error),
 	infoCallback InfoMessageCallback,
-) (*windowsBackuper, error) {
+) *windowsBackuper {
 
 	result := &windowsBackuper{}
 
@@ -41,11 +41,11 @@ func newWindowsBackuper(providerID *ole.GUID, timeout time.Duration, simple bool
 		},
 	}
 
-	return result, nil
+	return result
 }
 
 func (b *windowsBackuper) createSnapshot(m *mountPointInfo) (string, error) {
-	vsr, err := internal_windows.CreateSnapshots([]string{m.path}, b.opts)
+	vsr, err := internal_windows.CreateSnapshots([]string{m.dir}, b.opts)
 
 	b.vssResults = append(b.vssResults, vsr)
 
@@ -53,7 +53,7 @@ func (b *windowsBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 		return "", err
 	}
 
-	return vsr.GetSnapshotPath(m.path), nil
+	return vsr.GetSnapshotPath(m.dir), nil
 }
 
 func (b *windowsBackuper) deleteSnapshot(m *mountPointInfo) error {

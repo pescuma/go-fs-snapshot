@@ -31,6 +31,7 @@ func StartServer(snapshoter Snapshoter, cfg *ServerConfig) error {
 
 	rpc.RegisterFsSnapshotServer(s, &server{
 		snapshoter:   snapshoter,
+		backupers:    map[uint32]*backuper{},
 		activityChan: handleInactivity(s, cfg),
 		infoCallback: cfg.InfoCallback,
 	})
@@ -104,11 +105,9 @@ func (s *server) CanCreateSnapshots(ctx context.Context, request *rpc.CanCreateS
 	s.infoCallback(TraceLevel, "GRPC Received request: CanCreateSnapshots()")
 
 	// If the server has started it can create snapshots, at least for now
-	reply := rpc.CanCreateSnapshotsReply{
+	return &rpc.CanCreateSnapshotsReply{
 		Can: true,
-	}
-
-	return &reply, nil
+	}, nil
 }
 
 func (s *server) ListProviders(ctx context.Context, request *rpc.ListProvidersRequest) (*rpc.ListProvidersReply, error) {
@@ -219,11 +218,28 @@ func (s *server) DeleteSnapshot(ctx context.Context, request *rpc.DeleteRequest)
 	}, nil
 }
 
+func (s *server) ListMountPoints(ctx context.Context, request *rpc.ListMountPointsRequest) (*rpc.ListMountPointsReply, error) {
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: ListMountPoints(\"%v\")", request.Volume)
+
+	mps, err := s.snapshoter.ListMountPoints(request.Volume)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rpc.ListMountPointsReply{
+		MountPoints: mps,
+	}, nil
+}
+
 func (s *server) StartBackup(request *rpc.StartBackupRequest, response rpc.FsSnapshot_StartBackupServer) error {
 	s.sendActivity(commandStart)
 	defer s.sendActivity(commandEnd)
 
-	s.infoCallback(TraceLevel, "GRPC Received request: StartBackup(\"%v\", %v, %v)", request.ProviderId, request.TimeoutInSec, request.Simple)
+	s.infoCallback(TraceLevel, "GRPC Received request: StartBackup(\"%v\", %v, %v)",
+		request.ProviderId, request.TimeoutInSec, request.Simple)
 
 	b := &backuper{}
 
@@ -232,7 +248,7 @@ func (s *server) StartBackup(request *rpc.StartBackupRequest, response rpc.FsSna
 			MessageOrResult: &rpc.StartBackupReply_Message{
 				Message: &rpc.OutputMessage{
 					Level:   rpc.MessageLevel(level),
-					Message: fmt.Sprintf(format, a),
+					Message: fmt.Sprintf(format, a...),
 				},
 			},
 		})
@@ -244,8 +260,8 @@ func (s *server) StartBackup(request *rpc.StartBackupRequest, response rpc.FsSna
 		Timeout:    time.Duration(request.TimeoutInSec) * time.Second,
 		Simple:     request.Simple,
 		InfoCallback: func(level MessageLevel, format string, a ...interface{}) {
-			s.infoCallback(level, format, a)
-			b.messageReceiver(level, format, a)
+			s.infoCallback(level, format, a...)
+			b.messageReceiver(level, format, a...)
 		},
 	})
 
@@ -268,6 +284,7 @@ func (s *server) StartBackup(request *rpc.StartBackupRequest, response rpc.FsSna
 	})
 
 	if err != nil {
+		b.backuper.Close()
 		delete(s.backupers, id)
 		return err
 	}
@@ -277,25 +294,12 @@ func (s *server) StartBackup(request *rpc.StartBackupRequest, response rpc.FsSna
 	return nil
 }
 
-func (s *server) ListMountPoints(ctx context.Context, request *rpc.ListMountPointsRequest) (*rpc.ListMountPointsReply, error) {
-	s.sendActivity(commandStart)
-	defer s.sendActivity(commandEnd)
-
-	s.infoCallback(TraceLevel, "GRPC Received request: ListMountPoints(\"%v\")", request.Volume)
-
-	mps, err := s.snapshoter.ListMountPoints(request.Volume)
-	if err != nil {
-		return nil, err
-	}
-
-	return &rpc.ListMountPointsReply{
-		MountPoints: mps,
-	}, nil
-}
-
 func (s *server) TryToCreateTemporarySnapshot(request *rpc.TryToCreateTemporarySnapshotRequest, response rpc.FsSnapshot_TryToCreateTemporarySnapshotServer) error {
 	s.sendActivity(commandStart)
 	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: TryToCreateTemporarySnapshot(%v, \"%v\")",
+		request.BackuperId, request.Dir)
 
 	b, ok := s.backupers[request.BackuperId]
 	if !ok {
@@ -307,7 +311,7 @@ func (s *server) TryToCreateTemporarySnapshot(request *rpc.TryToCreateTemporaryS
 			MessageOrResult: &rpc.TryToCreateTemporarySnapshotReply_Message{
 				Message: &rpc.OutputMessage{
 					Level:   rpc.MessageLevel(level),
-					Message: fmt.Sprintf(format, a),
+					Message: fmt.Sprintf(format, a...),
 				},
 			},
 		})
@@ -334,6 +338,8 @@ func (s *server) CloseBackup(request *rpc.CloseBackupRequest, response rpc.FsSna
 	s.sendActivity(commandStart)
 	defer s.sendActivity(commandEnd)
 
+	s.infoCallback(TraceLevel, "GRPC Received request: CloseBackup(%v)", request.BackuperId)
+
 	b, ok := s.backupers[request.BackuperId]
 	if !ok {
 		return errors.Errorf("unknown backuper: %v", request.BackuperId)
@@ -343,7 +349,7 @@ func (s *server) CloseBackup(request *rpc.CloseBackupRequest, response rpc.FsSna
 		_ = response.Send(&rpc.CloseBackupReply{
 			Message: &rpc.OutputMessage{
 				Level:   rpc.MessageLevel(level),
-				Message: fmt.Sprintf(format, a),
+				Message: fmt.Sprintf(format, a...),
 			},
 		})
 	}
@@ -351,6 +357,8 @@ func (s *server) CloseBackup(request *rpc.CloseBackupRequest, response rpc.FsSna
 	b.backuper.Close()
 
 	b.messageReceiver = nil
+
+	delete(s.backupers, request.BackuperId)
 
 	s.sendActivity(backupEnd)
 
@@ -378,7 +386,7 @@ func convertProviderToLocal(p *rpc.Provider) *Provider {
 func convertSnapshotSetToRPC(set *SnapshotSet, includeSnapshots bool) *rpc.SnapshotSet {
 	result := &rpc.SnapshotSet{
 		Id:                      set.ID,
-		CreationTime:            set.CreationTime.In(time.UTC).Unix(),
+		CreationTime:            timeToInt64(set.CreationTime),
 		SnapshotCountOnCreation: int32(set.SnapshotCountOnCreation),
 	}
 
@@ -395,7 +403,7 @@ func convertSnapshotSetToRPC(set *SnapshotSet, includeSnapshots bool) *rpc.Snaps
 func convertSnapshotSetToLocal(set *rpc.SnapshotSet, includeSnapshots bool) *SnapshotSet {
 	result := &SnapshotSet{
 		ID:                      set.Id,
-		CreationTime:            time.Unix(set.CreationTime, 0).UTC().In(time.Local),
+		CreationTime:            int64ToTime(set.CreationTime),
 		SnapshotCountOnCreation: int(set.SnapshotCountOnCreation),
 	}
 
@@ -414,7 +422,7 @@ func convertSnapshotToRPC(snap *Snapshot, includeSet bool) *rpc.Snapshot {
 		Id:           snap.ID,
 		OriginalPath: snap.OriginalPath,
 		SnapshotPath: snap.SnapshotPath,
-		CreationTime: snap.CreationTime.In(time.UTC).Unix(),
+		CreationTime: timeToInt64(snap.CreationTime),
 		Provider:     convertProviderToRPC(snap.Provider),
 		State:        snap.State,
 		Attributes:   snap.Attributes,
@@ -432,7 +440,7 @@ func convertSnapshotToLocal(snap *rpc.Snapshot, set *SnapshotSet) *Snapshot {
 		ID:           snap.Id,
 		OriginalPath: snap.OriginalPath,
 		SnapshotPath: snap.SnapshotPath,
-		CreationTime: time.Unix(snap.CreationTime, 0).UTC().In(time.Local),
+		CreationTime: int64ToTime(snap.CreationTime),
 		Set:          set,
 		Provider:     convertProviderToLocal(snap.Provider),
 		State:        snap.State,

@@ -1,5 +1,9 @@
 package fs_snapshot
 
+func newNullBackuper() *nullBackuper {
+	return &nullBackuper{}
+}
+
 type nullBackuper struct {
 }
 

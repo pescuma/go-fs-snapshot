@@ -22,6 +22,14 @@ func absolutePath(path string) (string, error) {
 	return abspath, nil
 }
 
+func addPathSeparatorAsSuffix(dir string) string {
+	if !strings.HasSuffix(dir, string(os.PathSeparator)) {
+		dir += string(os.PathSeparator)
+	}
+
+	return dir
+}
+
 func changeBaseDir(path string, oldBase string, newBase string) (string, error) {
 	relative, err := filepath.Rel(oldBase, path)
 	if err != nil {

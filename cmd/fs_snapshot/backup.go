@@ -37,10 +37,11 @@ func (c *backupCmd) Run(ctx *context) error {
 		Timeout:    c.Timeout,
 		Simple:     c.Simple,
 	})
-	defer backuper.Close()
 	if err != nil {
 		return err
 	}
+
+	defer backuper.Close()
 
 	var snapshotPaths []string
 
@@ -72,7 +73,11 @@ func (c *backupCmd) Run(ctx *context) error {
 
 		ctx.console.Print("")
 
-		return errors.Wrapf(err, "Error executing command")
+		if err != nil {
+			return errors.Wrap(err, "Error executing command")
+		}
+
+		return nil
 
 	} else {
 		fmt.Print("Press <enter> to finish backup and delete snapshot(s)")

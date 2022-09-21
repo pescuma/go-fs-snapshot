@@ -21,7 +21,7 @@ type macosBackuper struct {
 func newMacosBackuper(mountPoints map[string]string,
 	listMountPoints func(volume string) ([]string, error),
 	infoCallback InfoMessageCallback,
-) (*macosBackuper, error) {
+) *macosBackuper {
 
 	result := &macosBackuper{}
 	result.volumes = newVolumeInfos()
@@ -33,11 +33,11 @@ func newMacosBackuper(mountPoints map[string]string,
 	result.baseBackuper.createSnapshot = result.createSnapshot
 	result.baseBackuper.deleteSnapshot = result.deleteSnapshot
 
-	return result, nil
+	return result
 }
 
 func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
-	drive := b.mountPoints[m.path]
+	drive := b.mountPoints[m.dir]
 
 	b.infoCallback(DetailsLevel, "Creating local snapshot")
 
@@ -79,9 +79,9 @@ func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 }
 
 func (b *macosBackuper) deleteSnapshot(m *mountPointInfo) error {
-	b.infoCallback(DetailsLevel, "Unmounting snapshot at %v", m.snapshotPath)
+	b.infoCallback(DetailsLevel, "Unmounting snapshot at %v", m.snapshotDir)
 
-	return run(b.infoCallback, "umount", m.snapshotPath)
+	return run(b.infoCallback, "umount", m.snapshotDir)
 }
 
 func (b *macosBackuper) Close() {

@@ -45,11 +45,11 @@ func execute(ctx *kong.Context, gs *globals) error {
 			ServerIP:       ip,
 			ServerPort:     port,
 		})
-		defer s.Close()
-
 		if err != nil {
 			return err
 		}
+
+		defer s.Close()
 	}
 
 	return ctx.Run(&context{

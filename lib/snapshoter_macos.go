@@ -162,7 +162,7 @@ func (s *macosSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	return newMacosBackuper(mountPoints, s.ListMountPoints, ic)
+	return newMacosBackuper(mountPoints, s.ListMountPoints, ic), nil
 }
 
 func (s *macosSnapshoter) Close() {

@@ -5,6 +5,7 @@ package internal_windows
 import (
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -272,7 +273,9 @@ func (r *SnapshotsResult) GetSnapshotPath(volume string) string {
 		return volume
 	}
 
-	return info.properties.GetSnapshotDeviceObject()
+	result := info.properties.GetSnapshotDeviceObject()
+
+	return result
 }
 
 func (r *SnapshotsResult) Close() {
@@ -313,6 +316,10 @@ func (r *SnapshotsResult) Close() {
 // EnumerateMountedFolders returns all mountpoints on the given volume.
 func EnumerateMountedFolders(volume string) ([]string, error) {
 	var result []string
+
+	if !strings.HasSuffix(volume, `\`) {
+		volume += `\`
+	}
 
 	volumeNamePointer, err := syscall.UTF16PtrFromString(volume)
 	if err != nil {

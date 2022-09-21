@@ -41,14 +41,14 @@ func newClientBackuper(client rpc.FsSnapshotClient, backuperId uint32, caseSensi
 
 func (b *clientBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 	b.infoCallback(TraceLevel, "GRPC Sending server request: TryToCreateTemporarySnapshot(%v, \"%v\")",
-		b.backuperId, m.path)
+		b.backuperId, m.dir)
 
 	ctx, cancel := context.WithTimeout(context.Background(), b.timeout+time.Minute)
 	defer cancel()
 
 	stream, err := b.client.TryToCreateTemporarySnapshot(ctx, &rpc.TryToCreateTemporarySnapshotRequest{
 		BackuperId: b.backuperId,
-		Dir:        m.path,
+		Dir:        m.dir,
 	})
 	if err != nil {
 		b.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
@@ -71,7 +71,7 @@ func (b *clientBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 
 		switch mr := reply.MessageOrResult.(type) {
 		case *rpc.TryToCreateTemporarySnapshotReply_Message:
-			b.infoCallback(MessageLevel(mr.Message.Level), mr.Message.Message)
+			b.infoCallback(MessageLevel(mr.Message.Level), "GRPC "+mr.Message.Message)
 
 		case *rpc.TryToCreateTemporarySnapshotReply_Result:
 			snapshotDir = mr.Result.SnapshotDir
@@ -112,6 +112,6 @@ func (b *clientBackuper) Close() {
 			return
 		}
 
-		b.infoCallback(MessageLevel(reply.Message.Level), reply.Message.Message)
+		b.infoCallback(MessageLevel(reply.Message.Level), "GRPC "+reply.Message.Message)
 	}
 }

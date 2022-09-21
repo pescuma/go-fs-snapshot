@@ -3,7 +3,6 @@
 package fs_snapshot
 
 import (
-	"os"
 	"os/user"
 	"runtime"
 	"sort"
@@ -216,10 +215,15 @@ func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filter
 				setsById[setID] = set
 			}
 
+			snapshotPath := ole.UTF16PtrToString(props.snapshot.SnapshotDeviceObject)
+			if !strings.HasSuffix(snapshotPath, `\`) {
+				snapshotPath += `\`
+			}
+
 			snapshot := &Snapshot{
 				ID:           snapshotID,
 				OriginalPath: strings.Join(volumes, ", "),
-				SnapshotPath: ole.UTF16PtrToString(props.snapshot.SnapshotDeviceObject),
+				SnapshotPath: snapshotPath,
 				CreationTime: toDate(props.snapshot.CreationTimestamp),
 				Provider:     provider,
 				Set:          set,
@@ -269,8 +273,8 @@ func getVolumeNames(volume *uint16) ([]string, error) {
 			break
 		}
 
-		if name[len(name)-1] == os.PathSeparator {
-			name = name[:len(name)-1]
+		if !strings.HasSuffix(name, `\`) {
+			name += `\`
 		}
 
 		result = append(result, name)
@@ -374,7 +378,7 @@ func (s *windowsSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	return newWindowsBackuper(providerID, cfg.Timeout, cfg.Simple, s.ListMountPoints, ic)
+	return newWindowsBackuper(providerID, cfg.Timeout, cfg.Simple, s.ListMountPoints, ic), nil
 }
 
 func (s *windowsSnapshoter) getProviderID(id string) (*ole.GUID, error) {

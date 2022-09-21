@@ -198,7 +198,8 @@ func (s *clientSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	ic(TraceLevel, "GRPC Sending server request: StartBackup()")
+	ic(TraceLevel, "GRPC Sending server request: StartBackup(\"%v\", %v, %v)",
+		cfg.ProviderID, int32(cfg.Timeout.Seconds()), cfg.Simple)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -231,7 +232,7 @@ func (s *clientSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 
 		switch mr := reply.MessageOrResult.(type) {
 		case *rpc.StartBackupReply_Message:
-			ic(MessageLevel(mr.Message.Level), mr.Message.Message)
+			ic(MessageLevel(mr.Message.Level), "GRPC "+mr.Message.Message)
 
 		case *rpc.StartBackupReply_Result:
 			received = true
@@ -244,7 +245,7 @@ func (s *clientSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		return nil, errors.New("GRPC error: missing reply data")
 	}
 
-	return newClientBackuper(s.client, backuperId, caseSensitive, cfg.Timeout, ic), nil
+	return newClientBackuper(s.client, backuperId, caseSensitive, cfg.Timeout, s.ListMountPoints, ic), nil
 }
 
 func (s *clientSnapshoter) Close() {
