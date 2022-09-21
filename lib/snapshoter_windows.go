@@ -350,6 +350,15 @@ func (s *windowsSnapshoter) NewBackupComponentsForManagement() (*internal_window
 	return bc, nil
 }
 
+func (s *windowsSnapshoter) ListMountPoints(volume string) ([]string, error) {
+	result, err := internal_windows.EnumerateMountedFolders(volume)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(result, volume+`\`), nil
+}
+
 func (s *windowsSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 	if cfg == nil {
 		cfg = &BackupConfig{}
@@ -365,7 +374,7 @@ func (s *windowsSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	return newWindowsBackuper(providerID, cfg.Timeout, cfg.Simple, ic)
+	return newWindowsBackuper(providerID, cfg.Timeout, cfg.Simple, s.ListMountPoints, ic)
 }
 
 func (s *windowsSnapshoter) getProviderID(id string) (*ole.GUID, error) {

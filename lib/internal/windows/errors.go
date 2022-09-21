@@ -19,7 +19,7 @@ func newVssError(hresult HRESULT, text string) *VssError {
 
 // newVssErrorF creates a new VSS api error.
 func newVssErrorF(hresult HRESULT, format string, a ...interface{}) *VssError {
-	return &VssError{Text: fmt.Sprintf(format, a), HResult: hresult}
+	return &VssError{Text: fmt.Sprintf(format, a...), HResult: hresult}
 }
 
 // Error implements the error interface.

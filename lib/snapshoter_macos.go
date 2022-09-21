@@ -125,6 +125,24 @@ func (s *macosSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
 	return true, nil
 }
 
+func (s *macosSnapshoter) ListMountPoints(volume string) ([]string, error) {
+	if volume != "" {
+		return nil, errors.Errorf("unknown volume: %v", volume)
+	}
+
+	// TODO Fetch this data from OS
+	return []string{
+		"/",
+	}, nil
+}
+
+func (s *macosSnapshoter) listMountPoints() (map[string]string, error) {
+	// TODO Fetch this data from OS
+	return map[string]string{
+		"/": "/System/Volumes/Data",
+	}, nil
+}
+
 func (s *macosSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 	if cfg == nil {
 		cfg = &BackupConfig{}
@@ -144,7 +162,7 @@ func (s *macosSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	return newMacosBackuper(ic, mountPoints)
+	return newMacosBackuper(mountPoints, s.ListMountPoints, ic)
 }
 
 func (s *macosSnapshoter) Close() {
@@ -157,10 +175,4 @@ func (s *macosSnapshoter) newProvider() *Provider {
 		Version: s.version,
 		Type:    "console application",
 	}
-}
-
-func (s *macosSnapshoter) listMountPoints() (map[string]string, error) {
-	return map[string]string{
-		"/": "/System/Volumes/Data",
-	}, nil
 }

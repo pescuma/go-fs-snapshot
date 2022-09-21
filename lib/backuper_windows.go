@@ -17,15 +17,18 @@ type windowsBackuper struct {
 	vssResults []*internal_windows.SnapshotsResult
 }
 
-func newWindowsBackuper(providerID *ole.GUID, timeout time.Duration, simple bool, infoCallback InfoMessageCallback) (*windowsBackuper, error) {
+func newWindowsBackuper(providerID *ole.GUID, timeout time.Duration, simple bool,
+	listMountPoints func(volume string) ([]string, error),
+	infoCallback InfoMessageCallback,
+) (*windowsBackuper, error) {
+
 	result := &windowsBackuper{}
 
 	result.volumes = newVolumeInfos()
 	result.infoCallback = infoCallback
 
 	result.baseBackuper.caseSensitive = false
-	result.baseBackuper.absolutePath = absolutePath
-	result.baseBackuper.listMountPoints = internal_windows.EnumerateMountedFolders
+	result.baseBackuper.listMountPoints = listMountPoints
 	result.baseBackuper.createSnapshot = result.createSnapshot
 	result.baseBackuper.deleteSnapshot = result.deleteSnapshot
 

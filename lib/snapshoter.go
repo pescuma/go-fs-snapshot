@@ -30,6 +30,9 @@ type Snapshoter interface {
 	// error if something went wrong.
 	DeleteSnapshot(id string, force bool) (bool, error)
 
+	// ListMountPoints lists all mount points inside a volume.
+	ListMountPoints(volume string) ([]string, error)
+
 	// StartBackup creates a Backuper to allow easy backup creation.
 	StartBackup(cfg *BackupConfig) (Backuper, error)
 

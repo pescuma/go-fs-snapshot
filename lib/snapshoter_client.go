@@ -3,6 +3,7 @@ package fs_snapshot
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/pkg/errors"
@@ -174,9 +175,76 @@ func (s *clientSnapshoter) DeleteSnapshot(id string, force bool) (bool, error) {
 	return reply.Deleted, nil
 }
 
-func (s *clientSnapshoter) StartBackup(opts *BackupConfig) (Backuper, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *clientSnapshoter) ListMountPoints(volume string) ([]string, error) {
+	s.infoCallback(TraceLevel, "GRPC Sending server request: ListMountPoints(\"%v\")", volume)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	reply, err := s.client.ListMountPoints(ctx, &rpc.ListMountPointsRequest{
+		Volume: volume,
+	})
+	if err != nil {
+		s.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
+		return nil, err
+	}
+
+	return reply.MountPoints, nil
+}
+
+func (s *clientSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
+	ic := cfg.InfoCallback
+	if ic == nil {
+		ic = s.infoCallback
+	}
+
+	ic(TraceLevel, "GRPC Sending server request: StartBackup()")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	stream, err := s.client.StartBackup(ctx, &rpc.StartBackupRequest{
+		ProviderId:   cfg.ProviderID,
+		TimeoutInSec: int32(cfg.Timeout.Seconds()),
+		Simple:       cfg.Simple,
+	})
+	if err != nil {
+		ic(TraceLevel, "GRPC error: %v", err.Error())
+		return nil, err
+	}
+
+	received := false
+	backuperId := uint32(0)
+	caseSensitive := true
+
+	for {
+		reply, err := stream.Recv()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			ic(TraceLevel, "GRPC error: %v", err.Error())
+			return nil, err
+		}
+
+		switch mr := reply.MessageOrResult.(type) {
+		case *rpc.StartBackupReply_Message:
+			ic(MessageLevel(mr.Message.Level), mr.Message.Message)
+
+		case *rpc.StartBackupReply_Result:
+			received = true
+			backuperId = mr.Result.BackuperId
+			caseSensitive = mr.Result.CaseSensitive
+		}
+	}
+
+	if !received {
+		return nil, errors.New("GRPC error: missing reply data")
+	}
+
+	return newClientBackuper(s.client, backuperId, caseSensitive, cfg.Timeout, ic), nil
 }
 
 func (s *clientSnapshoter) Close() {

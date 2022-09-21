@@ -7,6 +7,21 @@ import (
 	"strings"
 )
 
+// absolutePath is only needed on windows, but because of the server we need it to always be there.
+func absolutePath(path string) (string, error) {
+	abspath, err := filepath.Abs(path)
+	if err != nil {
+		return path, err
+	}
+
+	// If starts with \\?\ and is not a file share, remove it
+	if strings.HasPrefix(abspath, `\\?\`) && !strings.HasPrefix(abspath, `\\?\UNC\`) {
+		return abspath[4:], nil
+	}
+
+	return abspath, nil
+}
+
 func changeBaseDir(path string, oldBase string, newBase string) (string, error) {
 	relative, err := filepath.Rel(oldBase, path)
 	if err != nil {

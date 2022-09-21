@@ -12,7 +12,8 @@ service FsSnapshot {
   rpc SimplifyId(SimplifyIdRequest) returns (SimplifyIdReply) {}
   rpc DeleteSet(DeleteRequest) returns (DeleteReply) {}
   rpc DeleteSnapshot(DeleteRequest) returns (DeleteReply) {}
-  rpc StartBackup (StartBackupRequest) returns (stream StartBackupReply) {}
+  rpc ListMountPoints(ListMountPointsRequest) returns (ListMountPointsReply) {}
+  rpc StartBackup(StartBackupRequest) returns (stream StartBackupReply) {}
   rpc TryToCreateTemporarySnapshot(TryToCreateTemporarySnapshotRequest) returns (stream TryToCreateTemporarySnapshotReply) {}
   rpc CloseBackup (CloseBackupRequest) returns (stream CloseBackupReply) {}
 }
@@ -60,6 +61,13 @@ message DeleteReply {
   bool deleted = 1;
 }
 
+message ListMountPointsRequest {
+  string volume = 1;
+}
+message ListMountPointsReply {
+  repeated string mountPoints = 1;
+}
+
 message StartBackupRequest {
   string providerId = 1;
   int32 timeoutInSec = 2;
@@ -73,6 +81,7 @@ message StartBackupReply {
 }
 message StartBackupResult {
   uint32 backuperId = 1;
+  bool caseSensitive = 2;
 }
 
 message TryToCreateTemporarySnapshotRequest {

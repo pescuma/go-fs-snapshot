@@ -277,6 +277,22 @@ func (s *server) StartBackup(request *rpc.StartBackupRequest, response rpc.FsSna
 	return nil
 }
 
+func (s *server) ListMountPoints(ctx context.Context, request *rpc.ListMountPointsRequest) (*rpc.ListMountPointsReply, error) {
+	s.sendActivity(commandStart)
+	defer s.sendActivity(commandEnd)
+
+	s.infoCallback(TraceLevel, "GRPC Received request: ListMountPoints(\"%v\")", request.Volume)
+
+	mps, err := s.snapshoter.ListMountPoints(request.Volume)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rpc.ListMountPointsReply{
+		MountPoints: mps,
+	}, nil
+}
+
 func (s *server) TryToCreateTemporarySnapshot(request *rpc.TryToCreateTemporarySnapshotRequest, response rpc.FsSnapshot_TryToCreateTemporarySnapshotServer) error {
 	s.sendActivity(commandStart)
 	defer s.sendActivity(commandEnd)

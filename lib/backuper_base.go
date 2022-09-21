@@ -12,14 +12,13 @@ type baseBackuper struct {
 	infoCallback InfoMessageCallback
 
 	caseSensitive   bool
-	absolutePath    func(path string) (string, error)
 	listMountPoints func(volume string) ([]string, error)
 	createSnapshot  func(m *mountPointInfo) (string, error)
 	deleteSnapshot  func(m *mountPointInfo) error
 }
 
 func (b *baseBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (string, error) {
-	dir, err := b.absolutePath(inputDirectory)
+	dir, err := absolutePath(inputDirectory)
 	if err != nil {
 		return inputDirectory, err
 	}
@@ -48,7 +47,7 @@ func (b *baseBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (stri
 		return inputDirectory, err
 	}
 
-	path, snapshotPath, err := b.computeSnapshotPaths(dir)
+	path, snapshotPath, err := b.computeSnapshotPath(dir)
 	if err != nil {
 		return inputDirectory, err
 	}
@@ -61,7 +60,7 @@ func (b *baseBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (stri
 	return newDir, nil
 }
 
-func (b *baseBackuper) computeSnapshotPaths(dir string) (string, string, error) {
+func (b *baseBackuper) computeSnapshotPath(dir string) (string, string, error) {
 	m := b.volumes.GetMountPoint(dir)
 
 	// First use only a read lock to avoid stopping too much
@@ -86,13 +85,15 @@ func (b *baseBackuper) computeSnapshotPaths(dir string) (string, string, error) 
 	// Because we locked again, someone else may have already done it
 	switch m.state {
 	case StateSuccess:
-		return m.path, m.snapshotPath, nil
+		return path, m.snapshotPath, nil
 	case StateFailed:
 		return "", "", errors.New("snapshot failed in a previous attempt")
 	}
 
 	snapshotPath, err := b.createSnapshot(m)
+
 	if err != nil {
+		m.state = StateFailed
 		return "", "", err
 	}
 
@@ -112,8 +113,13 @@ func (b *baseBackuper) ListSnapshotedDirectories() map[string]string {
 		for _, m := range v {
 			m.mutex.RLock()
 
-			if m.state == StateSuccess {
+			switch m.state {
+			case StateSuccess:
 				result[m.path] = m.snapshotPath
+			case StateFailed:
+				result[m.path] = m.path
+			case StatePending:
+				result[m.path] = ""
 			}
 
 			m.mutex.RUnlock()

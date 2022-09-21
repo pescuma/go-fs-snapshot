@@ -4,7 +4,6 @@ package fs_snapshot
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 	"syscall"
 
@@ -19,30 +18,20 @@ type macosBackuper struct {
 	mountPoints   map[string]string
 }
 
-func newMacosBackuper(infoCallback InfoMessageCallback, mountPoints map[string]string) (*macosBackuper, error) {
+func newMacosBackuper(mountPoints map[string]string,
+	listMountPoints func(volume string) ([]string, error),
+	infoCallback InfoMessageCallback,
+) (*macosBackuper, error) {
+
 	result := &macosBackuper{}
 	result.volumes = newVolumeInfos()
 	result.infoCallback = infoCallback
 	result.mountPoints = mountPoints
 
 	result.baseBackuper.caseSensitive = true
-	result.baseBackuper.absolutePath = filepath.Abs
-	result.baseBackuper.listMountPoints = result.listMountPoints
+	result.baseBackuper.listMountPoints = listMountPoints
 	result.baseBackuper.createSnapshot = result.createSnapshot
 	result.baseBackuper.deleteSnapshot = result.deleteSnapshot
-
-	return result, nil
-}
-
-func (b *macosBackuper) listMountPoints(volume string) ([]string, error) {
-	if volume != "" {
-		return nil, errors.Errorf("unknown volume: %v", volume)
-	}
-
-	result := make([]string, 0, len(b.mountPoints))
-	for k, _ := range b.mountPoints {
-		result = append(result, k)
-	}
 
 	return result, nil
 }

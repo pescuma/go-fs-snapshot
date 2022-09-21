@@ -11,10 +11,6 @@ type Backuper interface {
 	// if the directory does not support snapshots.
 	TryToCreateTemporarySnapshot(directory string) (string, error)
 
-	// ListSnapshotedDirectories list all the directories that have snapshots, together with
-	// the snapshot path.
-	ListSnapshotedDirectories() map[string]string
-
 	// Close frees all resources.
 	Close()
 }
