@@ -120,7 +120,7 @@ func NewSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 			return result, nil
 		}
 
-		if errLocal == ErrorNotSupportedInThisOS {
+		if errors.Is(errLocal, ErrorNotSupportedInThisOS) {
 			return nil, errLocal
 		}
 	}
