@@ -91,7 +91,7 @@ func (b *baseBackuper) computeSnapshotPath(dir string) (string, string, error) {
 	case StateSuccess:
 		return path, snapshotPath, nil
 	case StateFailed:
-		return "", "", errors.New("snapshot failed in a previous attempt")
+		return "", "", ErrorSnapshotFailedInPreviousAttempt
 	}
 
 	m.mutex.Lock()
@@ -102,7 +102,7 @@ func (b *baseBackuper) computeSnapshotPath(dir string) (string, string, error) {
 	case StateSuccess:
 		return path, m.snapshotDir, nil
 	case StateFailed:
-		return "", "", errors.New("snapshot failed in a previous attempt")
+		return "", "", ErrorSnapshotFailedInPreviousAttempt
 	}
 
 	snapshotPath, err := b.createSnapshot(m)

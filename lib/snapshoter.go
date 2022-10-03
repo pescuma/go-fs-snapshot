@@ -2,6 +2,8 @@ package fs_snapshot
 
 import (
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type Snapshoter interface {
@@ -97,6 +99,9 @@ type BackupConfig struct {
 	InfoCallback InfoMessageCallback
 }
 
+var ErrorNotSupportedInThisOS = errors.New("snapshots not supported in this OS")
+var ErrorSnapshotFailedInPreviousAttempt = errors.New("snapshot failed in a previous attempt")
+
 // NewSnapshoter creates a new snapshoter.
 // In case of error a null snapshoter is returned, so you can use it without problem.
 func NewSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
@@ -113,6 +118,10 @@ func NewSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 		result, errLocal = newSnapshoterForOS(cfg)
 		if errLocal == nil {
 			return result, nil
+		}
+
+		if errLocal == ErrorNotSupportedInThisOS {
+			return nil, errLocal
 		}
 	}
 
