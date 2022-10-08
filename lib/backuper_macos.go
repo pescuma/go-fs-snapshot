@@ -13,81 +13,88 @@ import (
 type macosBackuper struct {
 	baseBackuper
 
-	snapshotDates []string
-	snapshotPaths []string
-	mountPoints   map[string]string
+	parent         *macosSnapshoter
+	snapshotDates  []string
+	snapshotDirs   []string
+	snapshotMounts []string
+	mountPoints    map[string]string
 }
 
-func newMacosBackuper(mountPoints map[string]string,
-	listMountPoints func(volume string) ([]string, error),
+func newMacosBackuper(parent *macosSnapshoter,
+	mountPoints map[string]string,
 	infoCallback InfoMessageCallback,
 ) *macosBackuper {
 
 	result := &macosBackuper{}
+	result.parent = parent
 	result.volumes = newVolumeInfos()
 	result.infoCallback = infoCallback
 	result.mountPoints = mountPoints
 
 	result.baseBackuper.caseSensitive = true
-	result.baseBackuper.listMountPoints = listMountPoints
+	result.baseBackuper.listMountPoints = parent.ListMountPoints
 	result.baseBackuper.createSnapshot = result.createSnapshot
-	result.baseBackuper.deleteSnapshot = result.deleteSnapshot
 
 	return result
 }
 
-func (b *macosBackuper) createSnapshot(m *mountPointInfo) (string, error) {
+func (b *macosBackuper) createSnapshot(m *mountPointInfo) (*Snapshot, error) {
 	drive := b.mountPoints[m.dir]
 
 	b.infoCallback(DetailsLevel, "Creating local snapshot")
 
 	output, err := runAndReturnOutput(b.infoCallback, "tmutil", "localsnapshot", drive)
 	if err != nil {
-		m.state = StateFailed
-		return "", errors.Errorf("error creating local snapshot: %v", err)
+		return nil, errors.Errorf("error creating local snapshot: %v", err)
 	}
 
 	re := regexp.MustCompile("Created local snapshot with date: ([0-9-]+)")
 	matches := re.FindStringSubmatch(output)
 	if len(matches) != 2 {
-		m.state = StateFailed
-		return "", errors.Errorf("unknown tmutil output: %v", output)
+		return nil, errors.Errorf("unknown tmutil output: %v", output)
 	}
 
 	snapshotDate := matches[1]
+	id := prefix + snapshotDate + suffix
+
 	b.snapshotDates = append(b.snapshotDates, snapshotDate)
 
 	b.infoCallback(DetailsLevel, "Created local snapshot with date %v", snapshotDate)
 
-	snapshotPath, err := os.MkdirTemp(os.TempDir(), "fs_snapshot_")
+	snapshotDir, err := os.MkdirTemp(os.TempDir(), "fs_snapshot_")
 	if err != nil {
-		m.state = StateFailed
-		return "", err
+		return nil, err
 	}
 
-	b.snapshotPaths = append(b.snapshotPaths, snapshotPath)
+	b.snapshotDirs = append(b.snapshotDirs, snapshotDir)
 
-	b.infoCallback(DetailsLevel, "Mounting snapshot at %v", snapshotPath)
+	b.infoCallback(DetailsLevel, "Mounting snapshot at %v", snapshotDir)
 
-	err = run(b.infoCallback, "mount_apfs", "-o", "ro", "-s", prefix+snapshotDate+suffix, drive, snapshotPath)
+	err = run(b.infoCallback, "mount_apfs", "-o", "rdonly,nobrowse", "-s", id, drive, snapshotDir)
 	if err != nil {
-		m.state = StateFailed
-		return "", errors.Errorf("error mounting local snapshot: %v", err)
+		return nil, errors.Errorf("error mounting local snapshot: %v", err)
 	}
 
-	return snapshotPath, nil
-}
+	b.snapshotMounts = append(b.snapshotMounts, snapshotDir)
 
-func (b *macosBackuper) deleteSnapshot(m *mountPointInfo) error {
-	b.infoCallback(DetailsLevel, "Unmounting snapshot at %v", m.snapshotDir)
+	snapshot, err := b.parent.newSnapshot(id, snapshotDate, m.dir, snapshotDir, nil)
+	if err != nil {
+		return nil, errors.Errorf("error creating snapshot object: %v", err)
+	}
 
-	return run(b.infoCallback, "umount", m.snapshotDir)
+	return snapshot, nil
 }
 
 func (b *macosBackuper) Close() {
-	b.baseBackuper.close()
+	for _, m := range b.snapshotMounts {
+		b.infoCallback(DetailsLevel, "Unmounting snapshot at %v", m)
+		err := run(b.infoCallback, "umount", m)
+		if err != nil {
+			b.infoCallback(InfoLevel, "Error unmounting %v : %v", m, err)
+		}
+	}
 
-	for _, p := range b.snapshotPaths {
+	for _, p := range b.snapshotDirs {
 		b.infoCallback(DetailsLevel, "Deleting snapshot mount folder %v", p)
 		err := syscall.Rmdir(p)
 		if err != nil {
@@ -103,6 +110,7 @@ func (b *macosBackuper) Close() {
 		}
 	}
 
-	b.snapshotPaths = nil
+	b.snapshotMounts = nil
+	b.snapshotDirs = nil
 	b.snapshotDates = nil
 }

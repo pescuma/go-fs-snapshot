@@ -34,12 +34,11 @@ func newClientBackuper(client rpc.FsSnapshotClient, backuperId uint32, caseSensi
 	result.baseBackuper.caseSensitive = caseSensitive
 	result.baseBackuper.listMountPoints = listMountPoints
 	result.baseBackuper.createSnapshot = result.createSnapshot
-	result.baseBackuper.deleteSnapshot = func(m *mountPointInfo) error { return nil }
 
 	return result
 }
 
-func (b *clientBackuper) createSnapshot(m *mountPointInfo) (string, error) {
+func (b *clientBackuper) createSnapshot(m *mountPointInfo) (*Snapshot, error) {
 	b.infoCallback(TraceLevel, "GRPC Sending server request: TryToCreateTemporarySnapshot(%v, \"%v\")",
 		b.backuperId, m.dir)
 
@@ -52,10 +51,10 @@ func (b *clientBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 	})
 	if err != nil {
 		b.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
-		return "", err
+		return nil, err
 	}
 
-	snapshotDir := ""
+	var snapshot *Snapshot
 
 	for {
 		reply, err := stream.Recv()
@@ -66,7 +65,7 @@ func (b *clientBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 
 		if err != nil {
 			b.infoCallback(TraceLevel, "GRPC error: %v", err.Error())
-			return "", err
+			return nil, err
 		}
 
 		switch mr := reply.MessageOrResult.(type) {
@@ -74,20 +73,19 @@ func (b *clientBackuper) createSnapshot(m *mountPointInfo) (string, error) {
 			b.infoCallback(MessageLevel(mr.Message.Level), "GRPC "+mr.Message.Message)
 
 		case *rpc.TryToCreateTemporarySnapshotReply_Result:
-			snapshotDir = mr.Result.SnapshotDir
+			set := convertSnapshotSetToLocal(mr.Result.Snapshot.Set, false)
+			snapshot = convertSnapshotToLocal(mr.Result.Snapshot, set)
 		}
 	}
 
-	if snapshotDir == "" {
-		return "", errors.New("GRPC error: missing reply data")
+	if snapshot == nil {
+		return nil, errors.New("GRPC error: missing reply data")
 	}
 
-	return snapshotDir, nil
+	return snapshot, nil
 }
 
 func (b *clientBackuper) Close() {
-	b.baseBackuper.close()
-
 	b.infoCallback(TraceLevel, "GRPC Sending server request: CloseBackup(%v)", b.backuperId)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

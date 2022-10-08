@@ -43,26 +43,24 @@ func (c *backupCmd) Run(ctx *context) error {
 
 	defer backuper.Close()
 
-	var snapshotPaths []string
+	var snapshotDirs []string
 
 	for _, dir := range c.Dirs {
-		snapshotPath, err := backuper.TryToCreateTemporarySnapshot(dir)
+		snapshotDir, _, err := backuper.TryToCreateTemporarySnapshot(dir)
 		switch {
 		case err != nil:
 			ctx.console.Printf("%v: Error creating snapshot: %v", dir, err)
-		case snapshotPath == dir:
-			ctx.console.Printf("%v: Snapshots not supported for this folder", dir)
 		default:
-			ctx.console.Printf("%v: Snapshot path is %v", dir, snapshotPath)
+			ctx.console.Printf("%v: Snapshot path is %v", dir, snapshotDir)
 		}
 
-		snapshotPaths = append(snapshotPaths, snapshotPath)
+		snapshotDirs = append(snapshotDirs, snapshotDir)
 	}
 
 	ctx.console.Print("")
 
 	if cmd != nil {
-		cmd.Args = append(cmd.Args, snapshotPaths...)
+		cmd.Args = append(cmd.Args, snapshotDirs...)
 
 		if ctx.globals.Verbose >= 1 {
 			ctx.console.Printf("Executing: '%v'", strings.Join(cmd.Args, "' '"))

@@ -144,6 +144,84 @@ func (s *windowsSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) 
 	return result, err
 }
 
+type snapshotsBuilder struct {
+	filter        func(setID string, snapshotID string) bool
+	providersById map[string]*Provider
+	setsById      map[string]*SnapshotSet
+
+	Sets      []*SnapshotSet
+	Snapshots []*Snapshot
+}
+
+func (s *windowsSnapshoter) newSnapshotsBuilder(filter func(setID, snapshotID string) bool) (*snapshotsBuilder, error) {
+	if filter == nil {
+		filter = func(setID, snapshotID string) bool { return true }
+	}
+
+	b := &snapshotsBuilder{
+		filter: filter,
+	}
+
+	providers, err := s.ListProviders("")
+	if err != nil {
+		return nil, err
+	}
+
+	b.providersById = map[string]*Provider{}
+	for _, p := range providers {
+		b.providersById[p.ID] = p
+	}
+
+	b.setsById = map[string]*SnapshotSet{}
+
+	return b, nil
+}
+
+func (b *snapshotsBuilder) AddSnapshot(props *internal_windows.VssSnapshotProperties) error {
+	volumes, err := getVolumeNames(props.OriginalVolumeName)
+	if err != nil {
+		return err
+	}
+
+	provider := b.providersById[toGuidString(props.ProviderID)]
+
+	setID := toGuidString(props.SnapshotSetID)
+	snapshotID := toGuidString(props.SnapshotID)
+
+	if b.filter(setID, snapshotID) {
+		set, exists := b.setsById[setID]
+		if !exists {
+			set = &SnapshotSet{
+				ID:                      setID,
+				CreationTime:            toDate(props.CreationTimestamp),
+				SnapshotCountOnCreation: int(props.SnapshotsCount),
+			}
+			b.setsById[setID] = set
+		}
+
+		snapshot := &Snapshot{
+			ID:           snapshotID,
+			OriginalDir:  strings.Join(volumes, ", "),
+			SnapshotDir:  props.GetSnapshotDeviceObject(),
+			CreationTime: toDate(props.CreationTimestamp),
+			Provider:     provider,
+			Set:          set,
+			State:        props.Status.Str(),
+			Attributes:   props.SnapshotAttributes.Str(),
+		}
+
+		set.Snapshots = append(set.Snapshots, snapshot)
+		if set.CreationTime.After(snapshot.CreationTime) {
+			set.CreationTime = snapshot.CreationTime
+		}
+
+		b.Snapshots = append(b.Snapshots, snapshot)
+		b.Sets = append(b.Sets, set)
+	}
+
+	return nil
+}
+
 func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filterSetID string) ([]*Snapshot, []*SnapshotSet, error) {
 	bc, err := s.NewBackupComponentsForManagement()
 	defer bc.Close()
@@ -157,20 +235,19 @@ func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filter
 		return nil, nil, err
 	}
 
-	providers, err := s.ListProviders("")
+	sb, err := s.newSnapshotsBuilder(func(setID, snapshotID string) bool {
+		if filterSetID != "" && filterSetID != setID && filterSetID != s.SimplifyID(setID) {
+			return false
+
+		} else if filterSnapshotID != "" && filterSnapshotID != snapshotID && filterSnapshotID != s.SimplifyID(snapshotID) {
+			return false
+		}
+
+		return true
+	})
 	if err != nil {
 		return nil, nil, err
 	}
-
-	providersById := make(map[string]*Provider)
-	for _, p := range providers {
-		providersById[p.ID] = p
-	}
-
-	setsById := make(map[string]*SnapshotSet)
-
-	var sets []*SnapshotSet
-	var snapshots []*Snapshot
 
 	for {
 		var props struct {
@@ -187,57 +264,9 @@ func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filter
 			break
 		}
 
-		volumes, err := getVolumeNames(props.snapshot.OriginalVolumeName)
+		err = sb.AddSnapshot(&props.snapshot)
 		if err != nil {
 			return nil, nil, err
-		}
-
-		provider := providersById[toGuidString(props.snapshot.ProviderID)]
-
-		setID := toGuidString(props.snapshot.SnapshotSetID)
-		snapshotID := toGuidString(props.snapshot.SnapshotID)
-
-		add := true
-		if filterSetID != "" && filterSetID != setID && filterSetID != s.SimplifyID(setID) {
-			add = false
-		} else if filterSnapshotID != "" && filterSnapshotID != snapshotID && filterSnapshotID != s.SimplifyID(snapshotID) {
-			add = false
-		}
-
-		if add {
-			set, exists := setsById[setID]
-			if !exists {
-				set = &SnapshotSet{
-					ID:                      setID,
-					CreationTime:            toDate(props.snapshot.CreationTimestamp),
-					SnapshotCountOnCreation: int(props.snapshot.SnapshotsCount),
-				}
-				setsById[setID] = set
-			}
-
-			snapshotPath := ole.UTF16PtrToString(props.snapshot.SnapshotDeviceObject)
-			if !strings.HasSuffix(snapshotPath, `\`) {
-				snapshotPath += `\`
-			}
-
-			snapshot := &Snapshot{
-				ID:           snapshotID,
-				OriginalPath: strings.Join(volumes, ", "),
-				SnapshotPath: snapshotPath,
-				CreationTime: toDate(props.snapshot.CreationTimestamp),
-				Provider:     provider,
-				Set:          set,
-				State:        props.snapshot.Status.Str(),
-				Attributes:   props.snapshot.SnapshotAttributes.Str(),
-			}
-
-			set.Snapshots = append(set.Snapshots, snapshot)
-			if set.CreationTime.After(snapshot.CreationTime) {
-				set.CreationTime = snapshot.CreationTime
-			}
-
-			snapshots = append(snapshots, snapshot)
-			sets = append(sets, set)
 		}
 
 		err = internal_windows.VssFreeSnapshotProperties(&props.snapshot)
@@ -246,7 +275,7 @@ func (s *windowsSnapshoter) listSnapshotsAndSets(filterSnapshotID string, filter
 		}
 	}
 
-	return snapshots, sets, nil
+	return sb.Snapshots, sb.Sets, nil
 }
 
 func getVolumeNames(volume *uint16) ([]string, error) {
@@ -378,7 +407,7 @@ func (s *windowsSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	return newWindowsBackuper(providerID, cfg.Timeout, cfg.Simple, s.ListMountPoints, ic), nil
+	return newWindowsBackuper(s, providerID, cfg.Timeout, cfg.Simple, ic), nil
 }
 
 func (s *windowsSnapshoter) getProviderID(id string) (*ole.GUID, error) {

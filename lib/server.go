@@ -317,7 +317,7 @@ func (s *server) TryToCreateTemporarySnapshot(request *rpc.TryToCreateTemporaryS
 		})
 	}
 
-	snapshotDir, err := b.backuper.TryToCreateTemporarySnapshot(request.Dir)
+	snapshotDir, snapshot, err := b.backuper.TryToCreateTemporarySnapshot(request.Dir)
 
 	b.messageReceiver = nil
 
@@ -329,6 +329,7 @@ func (s *server) TryToCreateTemporarySnapshot(request *rpc.TryToCreateTemporaryS
 		MessageOrResult: &rpc.TryToCreateTemporarySnapshotReply_Result{
 			Result: &rpc.TryToCreateTemporarySnapshotResult{
 				SnapshotDir: snapshotDir,
+				Snapshot:    convertSnapshotToRPC(snapshot, true),
 			},
 		},
 	})
@@ -420,8 +421,8 @@ func convertSnapshotSetToLocal(set *rpc.SnapshotSet, includeSnapshots bool) *Sna
 func convertSnapshotToRPC(snap *Snapshot, includeSet bool) *rpc.Snapshot {
 	result := &rpc.Snapshot{
 		Id:           snap.ID,
-		OriginalPath: snap.OriginalPath,
-		SnapshotPath: snap.SnapshotPath,
+		OriginalDir:  snap.OriginalDir,
+		SnapshotDir:  snap.SnapshotDir,
 		CreationTime: timeToInt64(snap.CreationTime),
 		Provider:     convertProviderToRPC(snap.Provider),
 		State:        snap.State,
@@ -438,8 +439,8 @@ func convertSnapshotToRPC(snap *Snapshot, includeSet bool) *rpc.Snapshot {
 func convertSnapshotToLocal(snap *rpc.Snapshot, set *SnapshotSet) *Snapshot {
 	return &Snapshot{
 		ID:           snap.Id,
-		OriginalPath: snap.OriginalPath,
-		SnapshotPath: snap.SnapshotPath,
+		OriginalDir:  snap.OriginalDir,
+		SnapshotDir:  snap.SnapshotDir,
 		CreationTime: int64ToTime(snap.CreationTime),
 		Set:          set,
 		Provider:     convertProviderToLocal(snap.Provider),

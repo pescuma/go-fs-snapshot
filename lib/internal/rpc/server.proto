@@ -96,6 +96,7 @@ message TryToCreateTemporarySnapshotReply {
 }
 message TryToCreateTemporarySnapshotResult {
   string snapshotDir = 1;
+  Snapshot snapshot = 2;
 }
 
 message CloseBackupRequest {
@@ -121,8 +122,8 @@ message SnapshotSet {
 
 message Snapshot {
   string id = 1;
-  string originalPath = 2;
-  string snapshotPath = 3;
+  string originalDir = 2;
+  string snapshotDir = 3;
   int64 creationTime = 4;
   SnapshotSet set = 5;
   Provider provider = 6;

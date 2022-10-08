@@ -266,16 +266,10 @@ type volumeSnapshotInfo struct {
 	properties *VssSnapshotProperties
 }
 
-func (r *SnapshotsResult) GetSnapshotPath(volume string) string {
+func (r *SnapshotsResult) GetProperties(volume string) *VssSnapshotProperties {
 	info := r.volumes[volume]
 
-	if info.properties == nil {
-		return volume
-	}
-
-	result := info.properties.GetSnapshotDeviceObject()
-
-	return result
+	return info.properties
 }
 
 func (r *SnapshotsResult) Close() {

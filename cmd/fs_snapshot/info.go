@@ -45,12 +45,12 @@ func findOneSnapshot(ctx *context, id string) (*fs_snapshot.Snapshot, error) {
 }
 
 func printSnapshotInfo(ctx *context, snapshot *fs_snapshot.Snapshot, prefix string) {
-	ctx.console.Printf("%vID:            %v", prefix, snapshot.ID)
-	ctx.console.Printf("%vSet ID:        %v", prefix, snapshot.Set.ID)
-	ctx.console.Printf("%vOriginal path: %v", prefix, snapshot.OriginalPath)
-	ctx.console.Printf("%vSnapshot path: %v", prefix, snapshot.SnapshotPath)
-	ctx.console.Printf("%vCreation:      %v", prefix, snapshot.CreationTime.Local().Format("2006-01-02 15:04:05 -07"))
-	ctx.console.Printf("%vProvider:      %v", prefix, snapshot.Provider.Name)
-	ctx.console.Printf("%vState:         %v", prefix, snapshot.State)
-	ctx.console.Printf("%vAttributes:    %v", prefix, snapshot.Attributes)
+	ctx.console.Printf("%vID:           %v", prefix, snapshot.ID)
+	ctx.console.Printf("%vSet ID:       %v", prefix, snapshot.Set.ID)
+	ctx.console.Printf("%vOriginal dir: %v", prefix, snapshot.OriginalDir)
+	ctx.console.Printf("%vSnapshot dir: %v", prefix, snapshot.SnapshotDir)
+	ctx.console.Printf("%vCreation:     %v", prefix, snapshot.CreationTime.Local().Format("2006-01-02 15:04:05 -07"))
+	ctx.console.Printf("%vProvider:     %v", prefix, snapshot.Provider.Name)
+	ctx.console.Printf("%vState:        %v", prefix, snapshot.State)
+	ctx.console.Printf("%vAttributes:   %v", prefix, snapshot.Attributes)
 }

@@ -12,10 +12,11 @@ type volumeInfos struct {
 }
 
 type mountPointInfo struct {
-	mutex       sync.RWMutex
-	dir         string
-	state       mountPointState
-	snapshotDir string
+	dir string
+
+	mutex    sync.RWMutex
+	state    mountPointState
+	snapshot *Snapshot
 }
 
 type mountPointState int

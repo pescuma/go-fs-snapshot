@@ -58,8 +58,8 @@ type SnapshotSet struct {
 
 type Snapshot struct {
 	ID           string
-	OriginalPath string
-	SnapshotPath string
+	OriginalDir  string
+	SnapshotDir  string
 	CreationTime time.Time
 	Set          *SnapshotSet
 	Provider     *Provider
@@ -100,7 +100,7 @@ type BackupConfig struct {
 }
 
 var ErrorNotSupportedInThisOS = errors.New("snapshots not supported in this OS")
-var ErrorSnapshotFailedInPreviousAttempt = errors.New("snapshot failed in a previous attempt")
+var ErrSnapshotFailedInPreviousAttempt = errors.New("snapshot failed in a previous attempt")
 
 // NewSnapshoter creates a new snapshoter.
 // In case of error a null snapshoter is returned, so you can use it without problem.

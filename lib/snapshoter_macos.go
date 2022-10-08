@@ -89,23 +89,14 @@ func (s *macosSnapshoter) ListSnapshots(filterID string) ([]*Snapshot, error) {
 				continue
 			}
 
-			t, err := time.Parse("2006-01-02-150405", simple)
+			// TODO check if it's mounted
+
+			snap, err := s.newSnapshot(line, simple, k, "", provider)
 			if err != nil {
 				return nil, err
 			}
 
-			t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local)
-
-			result = append(result, &Snapshot{
-				ID:           line,
-				OriginalPath: k,
-				SnapshotPath: "",
-				CreationTime: t,
-				Set:          nil,
-				Provider:     provider,
-				State:        "created",
-				Attributes:   "",
-			})
+			result = append(result, snap)
 		}
 	}
 
@@ -162,10 +153,34 @@ func (s *macosSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
 		ic = s.infoCallback
 	}
 
-	return newMacosBackuper(mountPoints, s.ListMountPoints, ic), nil
+	return newMacosBackuper(s, mountPoints, ic), nil
 }
 
 func (s *macosSnapshoter) Close() {
+}
+
+func (s *macosSnapshoter) newSnapshot(id, simpleID, originalPath, snapshotPath string, provider *Provider) (*Snapshot, error) {
+	t, err := time.Parse("2006-01-02-150405", simpleID)
+	if err != nil {
+		return nil, err
+	}
+
+	t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local)
+
+	if provider == nil {
+		provider = s.newProvider()
+	}
+
+	return &Snapshot{
+		ID:           id,
+		OriginalDir:  originalPath,
+		SnapshotDir:  snapshotPath,
+		CreationTime: t,
+		Set:          nil,
+		Provider:     provider,
+		State:        "created",
+		Attributes:   "",
+	}, nil
 }
 
 func (s *macosSnapshoter) newProvider() *Provider {

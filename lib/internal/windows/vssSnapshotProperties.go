@@ -3,6 +3,7 @@
 package internal_windows
 
 import (
+	"strings"
 	"unsafe"
 
 	"github.com/go-ole/go-ole"
@@ -28,7 +29,13 @@ type VssSnapshotProperties struct {
 // GetSnapshotDeviceObject returns root path to access the snapshot files
 // and folders.
 func (p *VssSnapshotProperties) GetSnapshotDeviceObject() string {
-	return ole.UTF16PtrToString(p.SnapshotDeviceObject)
+	result := ole.UTF16PtrToString(p.SnapshotDeviceObject)
+
+	if !strings.HasSuffix(result, `\`) {
+		result += `\`
+	}
+
+	return result
 }
 
 // VssFreeSnapshotProperties calls the equivalent VSS api.

@@ -9,7 +9,7 @@ type Backuper interface {
 	// If the directory is inside an existing snapshot, the snapshot is re-used.
 	// An error is returned iff some problem occurred while creating the snapshot, but not
 	// if the directory does not support snapshots.
-	TryToCreateTemporarySnapshot(directory string) (string, error)
+	TryToCreateTemporarySnapshot(directory string) (string, *Snapshot, error)
 
 	// Close frees all resources.
 	Close()

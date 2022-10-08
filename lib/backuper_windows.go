@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-ole/go-ole"
+	"github.com/pkg/errors"
 
 	"github.com/pescuma/go-fs-snapshot/lib/internal/windows"
 )
@@ -13,24 +14,21 @@ import (
 type windowsBackuper struct {
 	baseBackuper
 
+	parent     *windowsSnapshoter
 	opts       *internal_windows.SnapshotOptions
 	vssResults []*internal_windows.SnapshotsResult
 }
 
-func newWindowsBackuper(providerID *ole.GUID, timeout time.Duration, simple bool,
-	listMountPoints func(volume string) ([]string, error),
-	infoCallback InfoMessageCallback,
-) *windowsBackuper {
-
+func newWindowsBackuper(parent *windowsSnapshoter, providerID *ole.GUID, timeout time.Duration, simple bool, infoCallback InfoMessageCallback) *windowsBackuper {
 	result := &windowsBackuper{}
+	result.parent = parent
 
 	result.volumes = newVolumeInfos()
 	result.infoCallback = infoCallback
 
 	result.baseBackuper.caseSensitive = false
-	result.baseBackuper.listMountPoints = listMountPoints
+	result.baseBackuper.listMountPoints = parent.ListMountPoints
 	result.baseBackuper.createSnapshot = result.createSnapshot
-	result.baseBackuper.deleteSnapshot = result.deleteSnapshot
 
 	result.opts = &internal_windows.SnapshotOptions{
 		ProviderID: providerID,
@@ -44,25 +42,34 @@ func newWindowsBackuper(providerID *ole.GUID, timeout time.Duration, simple bool
 	return result
 }
 
-func (b *windowsBackuper) createSnapshot(m *mountPointInfo) (string, error) {
+func (b *windowsBackuper) createSnapshot(m *mountPointInfo) (*Snapshot, error) {
 	vsr, err := internal_windows.CreateSnapshots([]string{m.dir}, b.opts)
 
 	b.vssResults = append(b.vssResults, vsr)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return vsr.GetSnapshotPath(m.dir), nil
-}
+	props := vsr.GetProperties(m.dir)
+	if props == nil {
+		return nil, errors.Errorf("snapshots not supported in volume %v", m.dir)
+	}
 
-func (b *windowsBackuper) deleteSnapshot(m *mountPointInfo) error {
-	return nil
+	sb, err := b.parent.newSnapshotsBuilder(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	err = sb.AddSnapshot(props)
+	if err != nil {
+		return nil, err
+	}
+
+	return sb.Snapshots[0], nil
 }
 
 func (b *windowsBackuper) Close() {
-	b.baseBackuper.close()
-
 	for _, r := range b.vssResults {
 		r.Close()
 	}

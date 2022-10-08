@@ -37,8 +37,8 @@ func (c *listCmd) Run(ctx *context) error {
 		table.Header.Cells = append(table.Header.Cells, []*simpletable.Cell{
 			{Text: "ID"},
 			{Text: "Set ID"},
-			{Text: "Original path"},
-			{Text: "Snapshot path"},
+			{Text: "Original dir"},
+			{Text: "Snapshot dir"},
 			{Text: "Creation"},
 			{Text: "Provider"},
 			{Text: "State"},
@@ -61,8 +61,8 @@ func (c *listCmd) Run(ctx *context) error {
 			table.Body.Cells = append(table.Body.Cells, []*simpletable.Cell{
 				{Text: ctx.snapshoter.SimplifyID(p.ID)},
 				{Text: setID},
-				{Text: p.OriginalPath},
-				{Text: p.SnapshotPath},
+				{Text: p.OriginalDir},
+				{Text: p.SnapshotDir},
 				{Text: p.CreationTime.Local().Format("2006-01-02 15:04")},
 				{Text: p.State},
 			})
@@ -77,8 +77,8 @@ func (c *listCmd) Run(ctx *context) error {
 			table.Body.Cells = append(table.Body.Cells, []*simpletable.Cell{
 				{Text: p.ID},
 				{Text: setID},
-				{Text: p.OriginalPath},
-				{Text: p.SnapshotPath},
+				{Text: p.OriginalDir},
+				{Text: p.SnapshotDir},
 				{Text: p.CreationTime.Local().Format("2006-01-02 15:04:05 -07")},
 				{Text: provider},
 				{Text: p.State},
