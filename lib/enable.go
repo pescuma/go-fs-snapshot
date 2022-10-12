@@ -18,12 +18,12 @@ func CurrentUserCanCreateSnapshots(infoCb InfoMessageCallback) (bool, error) {
 	}
 
 	can, err := currentUserCanCreateSnapshotsForOS(infoCb)
-	if err == nil {
+	if err == nil && can {
 		return can, nil
 	}
 
 	can, err2 := serverCanCreateSnapshots(infoCb)
-	if err2 == nil {
+	if err2 == nil && can {
 		return can, nil
 	}
 

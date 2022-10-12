@@ -22,7 +22,7 @@ func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 
 	addr := fmt.Sprintf("%v:%v", cfg.ServerIP, cfg.ServerPort)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	result.conn, err = grpc.DialContext(ctx, addr,
