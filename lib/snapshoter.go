@@ -99,7 +99,7 @@ type BackupConfig struct {
 	InfoCallback InfoMessageCallback
 }
 
-var ErrorNotSupportedInThisOS = errors.New("snapshots not supported in this OS")
+var ErrNotSupportedInThisOS = errors.New("snapshots not supported in this OS")
 var ErrSnapshotFailedInPreviousAttempt = errors.New("snapshot failed in a previous attempt")
 
 // NewSnapshoter creates a new snapshoter.
@@ -120,7 +120,7 @@ func NewSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
 			return result, nil
 		}
 
-		if errors.Is(errLocal, ErrorNotSupportedInThisOS) {
+		if errors.Is(errLocal, ErrNotSupportedInThisOS) {
 			return nil, errLocal
 		}
 	}

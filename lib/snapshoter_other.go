@@ -3,9 +3,9 @@
 package fs_snapshot
 
 func startServerForOS(infoCb InfoMessageCallback) error {
-	return ErrorNotSupportedInThisOS
+	return ErrNotSupportedInThisOS
 }
 
 func newSnapshoterForOS(cfg *SnapshoterConfig) (Snapshoter, error) {
-	return nil, ErrorNotSupportedInThisOS
+	return nil, ErrNotSupportedInThisOS
 }
