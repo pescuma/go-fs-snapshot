@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pescuma/go-fs-snapshot/lib/internal/rpc"
+	"github.com/pescuma/go-fs-snapshot/fs_snapshot/internal/rpc"
 )
 
 type clientBackuper struct {

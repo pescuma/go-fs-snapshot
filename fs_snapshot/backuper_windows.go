@@ -8,7 +8,7 @@ import (
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
 
-	"github.com/pescuma/go-fs-snapshot/lib/internal/windows"
+	"github.com/pescuma/go-fs-snapshot/fs_snapshot/internal/windows"
 )
 
 type windowsBackuper struct {

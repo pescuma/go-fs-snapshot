@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/pescuma/go-fs-snapshot/lib"
+	"github.com/pescuma/go-fs-snapshot/fs_snapshot"
 )
 
 type setInfoCmd struct {

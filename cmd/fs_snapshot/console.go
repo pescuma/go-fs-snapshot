@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pescuma/go-fs-snapshot/lib"
+	"github.com/pescuma/go-fs-snapshot/fs_snapshot"
 )
 
 type console struct {

@@ -3,7 +3,7 @@ package main
 import (
 	"os/user"
 
-	"github.com/pescuma/go-fs-snapshot/lib"
+	"github.com/pescuma/go-fs-snapshot/fs_snapshot"
 )
 
 type enableForCurrentUserCmd struct {

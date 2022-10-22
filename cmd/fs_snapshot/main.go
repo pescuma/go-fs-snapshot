@@ -5,7 +5,7 @@ import (
 
 	"github.com/alecthomas/kong"
 
-	"github.com/pescuma/go-fs-snapshot/lib"
+	"github.com/pescuma/go-fs-snapshot/fs_snapshot"
 )
 
 var (

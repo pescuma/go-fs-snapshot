@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pescuma/go-fs-snapshot/lib/internal/rpc"
+	"github.com/pescuma/go-fs-snapshot/fs_snapshot/internal/rpc"
 )
 
 const DefaultIP = "localhost"

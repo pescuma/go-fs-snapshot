@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/pescuma/go-fs-snapshot/lib/internal/rpc"
+	"github.com/pescuma/go-fs-snapshot/fs_snapshot/internal/rpc"
 )
 
 // CurrentUserCanCreateSnapshots returns information if the current user can create snapshots
