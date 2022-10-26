@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sys/windows"
 
-	internal_windows "github.com/pescuma/go-fs-snapshot/fs_snapshot/internal/windows"
+	"github.com/pescuma/go-fs-snapshot/lib/fs_snapshot/internal/windows"
 )
 
 const simpleIdLength = 7

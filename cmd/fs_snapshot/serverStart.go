@@ -3,7 +3,7 @@ package main
 import (
 	"time"
 
-	"github.com/pescuma/go-fs-snapshot/fs_snapshot"
+	"github.com/pescuma/go-fs-snapshot/lib/fs_snapshot"
 )
 
 type serverStartCmd struct {

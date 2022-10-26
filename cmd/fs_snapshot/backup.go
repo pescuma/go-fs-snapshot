@@ -11,7 +11,7 @@ import (
 	"github.com/mattn/go-shellwords"
 	"github.com/pkg/errors"
 
-	"github.com/pescuma/go-fs-snapshot/fs_snapshot"
+	"github.com/pescuma/go-fs-snapshot/lib/fs_snapshot"
 )
 
 type backupCmd struct {

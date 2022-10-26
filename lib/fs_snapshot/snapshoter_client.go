@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/pescuma/go-fs-snapshot/fs_snapshot/internal/rpc"
+	"github.com/pescuma/go-fs-snapshot/lib/fs_snapshot/internal/rpc"
 )
 
 func newClientSnapshoter(cfg *SnapshoterConfig) (Snapshoter, error) {
