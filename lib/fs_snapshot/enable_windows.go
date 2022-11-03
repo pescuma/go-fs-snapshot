@@ -173,6 +173,11 @@ func createScheduledTaskXML() (string, error) {
 	}
 	defer f.Close()
 
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+
 	data := []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <Triggers />
@@ -207,7 +212,7 @@ func createScheduledTaskXML() (string, error) {
       <Arguments>server start --inactivity-time=5m</Arguments>
     </Exec>
   </Actions>
-</Task>`, os.Args[0]))
+</Task>`, exe))
 	if _, err = f.Write(data); err != nil {
 		return "", err
 	}

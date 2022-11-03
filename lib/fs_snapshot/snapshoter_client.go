@@ -193,6 +193,10 @@ func (s *clientSnapshoter) ListMountPoints(volume string) ([]string, error) {
 }
 
 func (s *clientSnapshoter) StartBackup(cfg *BackupConfig) (Backuper, error) {
+	if cfg == nil {
+		cfg = &BackupConfig{}
+	}
+
 	ic := cfg.InfoCallback
 	if ic == nil {
 		ic = s.infoCallback
