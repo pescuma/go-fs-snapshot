@@ -3,7 +3,6 @@ package fs_snapshot
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -12,7 +11,6 @@ type baseBackuper struct {
 	volumes      *volumeInfos
 	infoCallback InfoMessageCallback
 
-	caseSensitive   bool
 	listMountPoints func(volume string) ([]string, error)
 	createSnapshot  func(m *mountPointInfo) (*Snapshot, error)
 }
@@ -34,10 +32,6 @@ func (b *baseBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (stri
 		return inputDirectory, nil, errors.New("only able to snapshot directories")
 	}
 
-	if !b.caseSensitive {
-		dir = strings.ToLower(dir)
-	}
-
 	volume := filepath.VolumeName(dir)
 
 	err = b.volumes.AddVolume(volume, func(volume string) ([]string, error) {
@@ -47,9 +41,6 @@ func (b *baseBackuper) TryToCreateTemporarySnapshot(inputDirectory string) (stri
 		}
 
 		for i, m := range mps {
-			if !b.caseSensitive {
-				m = strings.ToLower(m)
-			}
 			mps[i] = addPathSeparatorAsSuffix(m)
 		}
 

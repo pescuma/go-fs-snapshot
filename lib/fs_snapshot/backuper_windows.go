@@ -23,10 +23,9 @@ func newWindowsBackuper(parent *windowsSnapshoter, providerID *ole.GUID, timeout
 	result := &windowsBackuper{}
 	result.parent = parent
 
-	result.volumes = newVolumeInfos()
+	result.volumes = newVolumeInfos(false)
 	result.infoCallback = infoCallback
 
-	result.baseBackuper.caseSensitive = false
 	result.baseBackuper.listMountPoints = parent.ListMountPoints
 	result.baseBackuper.createSnapshot = result.createSnapshot
 

@@ -27,11 +27,10 @@ func newMacosBackuper(parent *macosSnapshoter,
 
 	result := &macosBackuper{}
 	result.parent = parent
-	result.volumes = newVolumeInfos()
+	result.volumes = newVolumeInfos(true)
 	result.infoCallback = infoCallback
 	result.mountPoints = mountPoints
 
-	result.baseBackuper.caseSensitive = true
 	result.baseBackuper.listMountPoints = parent.ListMountPoints
 	result.baseBackuper.createSnapshot = result.createSnapshot
 

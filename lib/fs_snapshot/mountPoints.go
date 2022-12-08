@@ -7,6 +7,8 @@ import (
 )
 
 type volumeInfos struct {
+	caseSensitive bool
+
 	mutex   sync.RWMutex
 	volumes map[string]map[string]*mountPointInfo
 }
@@ -27,8 +29,10 @@ const (
 	StateFailed
 )
 
-func newVolumeInfos() *volumeInfos {
-	result := &volumeInfos{}
+func newVolumeInfos(caseSensitive bool) *volumeInfos {
+	result := &volumeInfos{
+		caseSensitive: caseSensitive,
+	}
 
 	result.volumes = make(map[string]map[string]*mountPointInfo)
 
@@ -36,12 +40,24 @@ func newVolumeInfos() *volumeInfos {
 }
 
 func (i *volumeInfos) AddVolume(volume string, listMountPoints func(volume string) ([]string, error)) error {
+	if !i.caseSensitive {
+		volume = strings.ToLower(volume)
+	}
+
 	i.mutex.RLock()
 
 	_, ok := i.volumes[volume]
 
 	i.mutex.RUnlock()
 
+	if ok {
+		return nil
+	}
+
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+
+	_, ok = i.volumes[volume]
 	if ok {
 		return nil
 	}
@@ -59,13 +75,7 @@ func (i *volumeInfos) AddVolume(volume string, listMountPoints func(volume strin
 		}
 	}
 
-	i.mutex.Lock()
-	defer i.mutex.Unlock()
-
-	_, ok = i.volumes[volume]
-	if !ok {
-		i.volumes[volume] = ms
-	}
+	i.volumes[volume] = ms
 
 	return nil
 }
@@ -73,14 +83,14 @@ func (i *volumeInfos) AddVolume(volume string, listMountPoints func(volume strin
 func (i *volumeInfos) ComputeNeeded(dir string) []*mountPointInfo {
 	var result []*mountPointInfo
 
-	volume := filepath.VolumeName(dir)
+	volume := i.volumeName(dir)
 
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
 
 	for _, mount := range i.volumes[volume] {
-		insideMount := strings.HasPrefix(dir, mount.dir)
-		mountInside := strings.HasPrefix(mount.dir, dir)
+		insideMount := i.hasPrefix(dir, mount.dir)
+		mountInside := i.hasPrefix(mount.dir, dir)
 
 		if !insideMount && !mountInside {
 			continue
@@ -97,16 +107,35 @@ func (i *volumeInfos) ComputeNeeded(dir string) []*mountPointInfo {
 func (i *volumeInfos) GetMountPoint(dir string) *mountPointInfo {
 	var result *mountPointInfo
 
-	volume := filepath.VolumeName(dir)
+	volume := i.volumeName(dir)
 
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
 
 	for _, m := range i.volumes[volume] {
-		if strings.HasPrefix(dir, m.dir) && (result == nil || len(result.dir) < len(m.dir)) {
+		if i.hasPrefix(dir, m.dir) && (result == nil || len(result.dir) < len(m.dir)) {
 			result = m
 		}
 	}
 
 	return result
+}
+
+func (i *volumeInfos) volumeName(dir string) string {
+	result := filepath.VolumeName(dir)
+
+	if !i.caseSensitive {
+		result = strings.ToLower(result)
+	}
+
+	return result
+}
+
+func (i *volumeInfos) hasPrefix(s, prefix string) bool {
+	if !i.caseSensitive {
+		s = strings.ToLower(s)
+		prefix = strings.ToLower(prefix)
+	}
+
+	return strings.HasPrefix(s, prefix)
 }

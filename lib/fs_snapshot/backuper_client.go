@@ -25,13 +25,12 @@ func newClientBackuper(client rpc.FsSnapshotClient, backuperId uint32, caseSensi
 ) *clientBackuper {
 
 	result := &clientBackuper{}
-	result.volumes = newVolumeInfos()
+	result.volumes = newVolumeInfos(caseSensitive)
 	result.client = client
 	result.backuperId = backuperId
 	result.timeout = timeout
 	result.infoCallback = infoCallback
 
-	result.baseBackuper.caseSensitive = caseSensitive
 	result.baseBackuper.listMountPoints = listMountPoints
 	result.baseBackuper.createSnapshot = result.createSnapshot
 
