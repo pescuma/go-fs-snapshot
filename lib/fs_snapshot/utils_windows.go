@@ -32,5 +32,5 @@ func toDate(filetime uint64) time.Time {
 }
 
 func createScheduledTaskName(username string) string {
-	return fmt.Sprintf(`\fs_stapshot\server start (%v)`, strings.ReplaceAll(username, `\`, `_`))
+	return fmt.Sprintf(`\fs_snapshot\server start (%v)`, strings.ReplaceAll(username, `\`, `_`))
 }
