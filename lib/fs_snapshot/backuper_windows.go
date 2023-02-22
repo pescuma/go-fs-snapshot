@@ -3,6 +3,7 @@
 package fs_snapshot
 
 import (
+	"strings"
 	"time"
 
 	"github.com/go-ole/go-ole"
@@ -65,7 +66,12 @@ func (b *windowsBackuper) createSnapshot(m *mountPointInfo) (*Snapshot, error) {
 		return nil, err
 	}
 
-	return sb.Snapshots[0], nil
+	for _, snapshot := range sb.Snapshots {
+		if strings.EqualFold(snapshot.OriginalDir, m.dir) {
+			return snapshot, nil
+		}
+	}
+	return nil, errors.New("Failed after creating snapshot: original volume not found")
 }
 
 func (b *windowsBackuper) Close() {

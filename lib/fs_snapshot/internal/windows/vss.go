@@ -160,7 +160,7 @@ func CreateSnapshots(volumes []string, opts *SnapshotOptions) (*SnapshotsResult,
 
 	if !atLeastOneVolumeSupported {
 		opts.InfoCallback(TraceLevel, "Aboting snapshot because there is no supported volume")
-		return &r, nil
+		return &r, errors.New("Snapshots not supported in any requested volume")
 	}
 
 	opts.InfoCallback(TraceLevel, "VSS StartSnapshotSet()")
@@ -327,7 +327,7 @@ func EnumerateMountedFolders(volume string) ([]string, error) {
 		return result, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "FindFirstVolumeMountPoint() failed")
 	}
 
 	defer windows.FindVolumeMountPointClose(handle)
@@ -339,12 +339,11 @@ func EnumerateMountedFolders(volume string) ([]string, error) {
 
 		err = windows.FindNextVolumeMountPoint(handle, &buffer[0], windows.MAX_LONG_PATH)
 
+		if err == syscall.ERROR_NO_MORE_FILES {
+			break
+		}
 		if err != nil {
-			if err == syscall.ERROR_NO_MORE_FILES {
-				break
-			}
-
-			return result, errors.New("FindNextVolumeMountPoint() failed: " + err.Error())
+			return nil, errors.Wrap(err, "FindNextVolumeMountPoint() failed")
 		}
 	}
 

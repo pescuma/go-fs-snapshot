@@ -199,23 +199,26 @@ func (b *snapshotsBuilder) AddSnapshot(props *internal_windows.VssSnapshotProper
 			b.setsById[setID] = set
 		}
 
-		snapshot := &Snapshot{
-			ID:           snapshotID,
-			OriginalDir:  strings.Join(volumes, ", "),
-			SnapshotDir:  props.GetSnapshotDeviceObject(),
-			CreationTime: toDate(props.CreationTimestamp),
-			Provider:     provider,
-			Set:          set,
-			State:        props.Status.Str(),
-			Attributes:   props.SnapshotAttributes.Str(),
+		for _, volume := range volumes {
+			snapshot := &Snapshot{
+				ID:           snapshotID,
+				OriginalDir:  volume,
+				SnapshotDir:  props.GetSnapshotDeviceObject(),
+				CreationTime: toDate(props.CreationTimestamp),
+				Provider:     provider,
+				Set:          set,
+				State:        props.Status.Str(),
+				Attributes:   props.SnapshotAttributes.Str(),
+			}
+
+			set.Snapshots = append(set.Snapshots, snapshot)
+			if set.CreationTime.After(snapshot.CreationTime) {
+				set.CreationTime = snapshot.CreationTime
+			}
+
+			b.Snapshots = append(b.Snapshots, snapshot)
 		}
 
-		set.Snapshots = append(set.Snapshots, snapshot)
-		if set.CreationTime.After(snapshot.CreationTime) {
-			set.CreationTime = snapshot.CreationTime
-		}
-
-		b.Snapshots = append(b.Snapshots, snapshot)
 		b.Sets = append(b.Sets, set)
 	}
 
@@ -294,19 +297,18 @@ func getVolumeNames(volume *uint16) ([]string, error) {
 	var result []string
 	i := 0
 
-	for i < len(buffer) {
+	for i < len(buffer) && buffer[i] != 0 {
 		name := ole.UTF16PtrToString(&buffer[i])
-		i += len(name)*2 + 2
-
-		if name == "" {
-			break
-		}
 
 		if !strings.HasSuffix(name, `\`) {
 			name += `\`
 		}
 
 		result = append(result, name)
+
+		for ; i < len(buffer) && buffer[i] != 0; i++ {
+		}
+		i++
 	}
 
 	sort.Slice(result, func(a, b int) bool {
